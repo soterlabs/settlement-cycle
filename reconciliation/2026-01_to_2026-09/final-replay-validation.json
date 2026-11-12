@@ -1,0 +1,13 @@
+{
+  "status": "replayed_publication_scope_fix_no_financial_changes",
+  "executed_at_utc": "2026-11-12T01:52:57.342961+00:00",
+  "command": "PYTHONPATH=.:src python scripts/build_jan_sep_2026_reconciliation.py --output-dir reconciliation/2026-01_to_2026-09",
+  "outputs_sha256": {
+    "data.json": "6708981f2f4b1f0a96bd3d7b04ab37e1f4078df65ed97aa76bda40cf4d5a31b0",
+    "proposed-october-adjustments.json": "75737e7d77cbdcc9637935d9f0f7d1d33bea97228605ff56a4ee1f58df693036",
+    "forum-post.md": "f17a07a0eac56dce5988b73b282be3c4a13f66398bc61f9cb9dd0859e3a5241f"
+  },
+  "published_months_rewritten": false,
+  "spark_sky_adjustment": "536094.04",
+  "additional_credit": "21452.86"
+}

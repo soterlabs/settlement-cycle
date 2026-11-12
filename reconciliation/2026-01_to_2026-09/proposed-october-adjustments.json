@@ -1,0 +1,34 @@
+{
+  "status": "Superseded combined October snapshot \u2014 audit only; do not apply to settlement configuration",
+  "superseded_by": "https://github.com/soterlabs/settlement-cycle/pull/275",
+  "historical_source": "data.json:adjustment_totals",
+  "ordinary_october_receipts_preserved": true,
+  "msc_preview": {
+    "2026-10": {
+      "spark": {
+        "dv_adj": "0",
+        "sv_adj": "249141.52",
+        "sky_adj": "536094.04",
+        "send_credit": "0"
+      },
+      "grove": {
+        "dv_adj": "0",
+        "sv_adj": "927411.94",
+        "sky_adj": "1030726.24",
+        "send_credit": "0"
+      },
+      "osero": {
+        "dv_adj": "0",
+        "sv_adj": "0",
+        "sky_adj": "0",
+        "send_credit": "5514.00"
+      },
+      "obex": {
+        "dv_adj": "0",
+        "sv_adj": "-273508.90",
+        "sky_adj": "0",
+        "send_credit": "0"
+      }
+    }
+  }
+}

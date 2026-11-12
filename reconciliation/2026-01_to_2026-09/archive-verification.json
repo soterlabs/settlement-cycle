@@ -1,0 +1,8 @@
+{
+  "ethereum_mainnet_verified": true,
+  "historical_response_cross_checks": 24,
+  "exact_matches": 24,
+  "provider_credentials_retained": false,
+  "node_source": "User-configured Ethereum archive endpoint in local .env; endpoint and credentials omitted",
+  "retained_state_responses": 97352
+}

@@ -1,0 +1,18 @@
+{
+  "source": "settle-dr-dune/hypersync-results/dr_comparison_hypersync.xlsx",
+  "commit": "d53dd1317bd8f52f22a3400aebcb5a095689a812",
+  "sha256": "17e8ed88d00a53c3a95371ecb9d715569542e8ece2f51aa96994c7174de16ca3",
+  "rows": [],
+  "csv_source": "hypersync-results/dr/dr_monthly_combined.csv",
+  "csv_sha256": "2d898d1404474c34c59193d982a3f800ac5d1a0a68841251513f680b9e9a807c",
+  "matching_csv_rows": [
+    {
+      "month": "2026-10-01",
+      "blockchain": "base",
+      "token": "sUSDS",
+      "ref_code": "3014",
+      "dr_usd": "4.20346217391998e-09",
+      "source": "psm3"
+    }
+  ]
+}

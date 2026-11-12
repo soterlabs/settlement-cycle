@@ -1,0 +1,27 @@
+{
+  "status": "grove_only_active_pr280_replay_complete",
+  "method": "Replay current applicable rules from PR #220 scope; compare against settled reports and subtract prior true-ups. Do not sum independent PR estimates.",
+  "first_included_pr": 220,
+  "history_start_commit": "d1460a9fe6f00580b9886b39b3bb81d262fdc54d",
+  "published_baseline_commit": "536f1492089ed82fbf6eaabb956f7a194b887d47",
+  "calculation_commit": "703c66863a0e99edf839658081026926f038c70b",
+  "earning_window": [
+    "2026-01",
+    "2026-09"
+  ],
+  "previous_totals_provisional": false,
+  "known_limit": "Keep current production block-state rounding and complete-exit behavior; do not book the earlier event-principal estimate as exact replay.",
+  "deduplication": [
+    "Preserve PR #218 historical reserve-factor and BUIDL credits once.",
+    "Preserve September Basin policy and September close figures already settled.",
+    "Replace overlapping Spark S70 venue correction rather than add it twice.",
+    "Recompute period-net payment effects, including Osero financed-shortfall refund."
+  ],
+  "lending_allocations": 17,
+  "lending_allocation_months": 139,
+  "retained_rpc_responses": 97352,
+  "settlement_execution": "Proposal only: no production adjustment or executed payment changed",
+  "latest_replay_prime": "grove",
+  "latest_replay_active_venue_months": 17,
+  "non_grove_amounts_unchanged": true
+}

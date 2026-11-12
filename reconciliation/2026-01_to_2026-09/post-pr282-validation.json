@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "kind": "read_only_component_replay_after_rebase",
+  "main_commit": "c559a19436bacc98c3f6ec290f61c5cb7ecc36c4",
+  "replay_code_commit": "332235b59584c04a7776ba6abaeff848cb44a803",
+  "previous_pr_head": "ec89f0bdb501d66365979470df0600e820f41a16",
+  "command": "PYTHONDONTWRITEBYTECODE=1 PYTHON_DOTENV_DISABLED=1 SETTLE_NO_CACHE=1 PYTHONPATH=src python scripts/build_jan_sep_2026_reconciliation.py --output-dir /tmp/rebase282-pr277-replay",
+  "replayed": "17 active Grove Base allocation-months and E12 attribution; existing combined ledger rebuilt from immutable checkpoints",
+  "unchanged_checkpoints": [
+    "139-row lending replay",
+    "Spark components",
+    "Osero components",
+    "Obex components"
+  ],
+  "financial_components_identical": true,
+  "adjustment_totals_identical": true,
+  "remaining_adjustments_identical": true,
+  "proposed_october_adjustments_identical": true,
+  "output_sha256": {
+    "proposed-october-adjustments.json": "40dfc40375bfc21d5bb6e6bb6a62ccb4d9b6118d26e5a804c4d8cbc0eeba498e",
+    "data.json": "d06c464ea1bfca2867466a0692c70cb6c75d52db0b5bcd31ec5e455a8045d9c8",
+    "forum-post.md": "6e5f990d83d2b4378f7010c21fc92813930749396d19b524bb3a7bbf31be0a73"
+  },
+  "pending_dependency": {
+    "pr": 281,
+    "reason": "Spark bridge correction is still unmerged. Existing Spark Sky adjustment is provisional; this run does not apply or authorize the bridge replacement."
+  },
+  "whole_prime_asset_controls": "not_attested_by_component_replay",
+  "canonical_settlements_rewritten": false,
+  "builder_sha256": "322de9c6b97732d9b749138623de5e36cd4ecca53d0d9e57bde3bd36cfd6d753",
+  "financial_data_byte_identical": true
+}
