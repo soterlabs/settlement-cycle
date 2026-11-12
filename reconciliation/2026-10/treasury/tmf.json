@@ -1,6 +1,6 @@
 {
   "id": "tmf",
-  "generated_at_utc": "2026-11-12T16:54:26+00:00",
+  "generated_at_utc": "2026-11-12T17:57:59+00:00",
   "month": "2026-10",
   "msc": "MSC#14",
   "inputs": {
@@ -8,7 +8,8 @@
     "snr": "18600412",
     "sky_twap": "0.075530095541521328",
     "aggregate_backstop_capital": "90093638.469583341228153379",
-    "usds_supply": "6393832505.861569282433382316"
+    "usds_supply": "6393832505.861569282433382316",
+    "sky_rewards_from_buys": "34965950.75880779116010117626"
   },
   "policy": {
     "step1_share": "0.20",
@@ -34,7 +35,8 @@
     "sky_twap": "BA monthly SKY TWAP, 31 days: https://observatory.data.blockanalitica.com/sky/twap/monthly/?year=2026&month=10 (retrieved 2026-11-12)",
     "sky_reserves": "BA historical aggregate_backstop_capital, 2026-10-31: https://sky.data.blockanalitica.com/internal/risk/info/historic/?days_ago=45 (retrieved 2026-11-12)",
     "snr": "settlements/sky_total/2026-10 (rounded to whole USDS)",
-    "usds_supply": "USDS.totalSupply() at block 26316188"
+    "usds_supply": "USDS.totalSupply() at block 26316188",
+    "sky_rewards_basis": "Actual cycle-month burn-window SKY purchases allocated to stakers; 45/55 at the 55% regime, using each kick's regime; effective September 2026"
   },
   "pins": {
     "from_block": 26093738,
@@ -67,11 +69,11 @@
       "hop": 2119,
       "annual_run_rate": "89281977.6000",
       "sky_bought_estimate": "54178279.67330513807186917324",
-      "sky_rewards_monthly": "44327683.36906784024062023265",
-      "vest_tot_exact": "132983050.1072035207218606980",
-      "vest_tot": "132983050",
-      "stream_rate": "17.10172968106995884773662551",
-      "weekly_pull": "10343126.11111111111111111111",
+      "sky_rewards_monthly": "34965950.75880779116010117626",
+      "vest_tot_exact": "104897852.2764233734803035288",
+      "vest_tot": "104897852",
+      "stream_rate": "13.48995010288065843621399177",
+      "weekly_pull": "8158721.822222222222222222222",
       "hop_within_beam": true,
       "kbump_within_beam": true,
       "run_rate_within_beam": true

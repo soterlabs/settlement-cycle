@@ -70,3 +70,26 @@ The other warning says there are no published mint/send pins yet. That is
 expected for this draft: all six derived instructions match the reviewed prime
 preview. TMF's SNR check passes, all BEAM bounds pass, and no executed November
 parameter update is assumed. October activity contains 974 kicks.
+
+## SKY rewards stream correction
+
+The operator-supplied BA TMF Calculator changes stream sizing from the
+September 2026 cycle: use actual cycle-month burn-window purchases allocated
+to stakers, rather than dividing the future USDS budget by TWAP. The three-month
+runway and 90-day duration remain unchanged. July and August keep TWAP sizing;
+no previously published September artifacts are regenerated. Missing activity
+fails instead of falling back to an estimate; an observed zero remains zero.
+
+October's retained 42,736,162.038542855862345882 SKY purchases give
+34,965,950.75880779116010117626 SKY for stakers, 104,897,852 SKY vest total,
+and approximately 8,158,722 SKY per weekly distributor pull. SNR, prime
+payments, USDS budgets, hop and burn attribution are unchanged. TWAP remains
+in the model estimate and the USDS-farm APY valuation; the SKY-farm APY uses
+the corrected rewards and actual month-end staked balance.
+
+Recalculate without RPC/indexer calls:
+
+```sh
+PYTHONPATH=src python scripts/replay_october_tmf.py
+PYTHONPATH=src:scripts python scripts/retain_october_treasury.py
+```

@@ -62,6 +62,7 @@ def treasury_section(indexed):
         lines.append(f'| {label} | {D(w[key]):,.{places}f} {unit} |')
     lines += [f"| SKY to burn from October purchases | {D(tmf['results']['sky_to_burn']):,.2f} SKY |", '',
               'The engine uses 6,000 USDS per batch and a 55% buyback share. '
+              'Monthly SKY rewards use actual October burn-window purchases allocated to stakers (45/55); the 90-day stream covers three months of those rewards. '
               'The burn above is attributed to actual October purchases, separately from the future burn purchase budget.', '',
               'Calculation details: [non-MSC](../settlements/non_msc/2026-10/summary.md), '
               '[consolidated Sky revenue](../settlements/sky_total/2026-10/summary.md), '

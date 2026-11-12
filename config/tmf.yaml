@@ -16,7 +16,9 @@
 #           On-chain: kicker.kbump fixed at 6,000 USDS; splitter.hop is SOLVED
 #           so that the engine spends the budget over a 365/12-day month;
 #           splitter.burn = the two buying legs combined (55%).
-#   Step 4  SKY staking rewards = 45% leg ÷ prior-month SKY TWAP, fronted by
+#   Step 4  July-August: SKY rewards = 45% leg / monthly SKY TWAP.
+#           From September 2026: actual cycle-month burn-window purchases
+#           allocated to stakers (45/55 at the 55% regime), fronted by
 #           the treasury through a 90-day DssVest stream sized for 3 months
 #           (vestTot); the 10/55 share of the SKY actually bought under the
 #           55% regime is burned in the following month's MSC spell.

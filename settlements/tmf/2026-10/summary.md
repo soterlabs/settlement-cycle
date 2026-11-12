@@ -51,11 +51,11 @@ Treasury Management Function waterfall for the **October 2026** cycle (MSC#14): 
 
 | Line | Value |
 |---|---:|
-| Monthly SKY rewards (45% leg ÷ TWAP) → REWARDS_LSSKY_SKY | 44,327,683.37 SKY |
+| Monthly SKY rewards (actual burn-window buys allocated to stakers) → REWARDS_LSSKY_SKY | 34,965,950.76 SKY |
 | Monthly USDS rewards → REWARDS_LSSKY_USDS (via Splitter, per batch) | 3,348,074.16 USDS |
-| vestTot (3 months of SKY rewards, 90-day stream) | 132,983,050.11 → **132,983,050 SKY** |
-| Stream rate (vestTot ÷ tau) | 17.1017 SKY/s |
-| Distributor pull per farm period (7 d) ≈ | 10,343,126 SKY |
+| vestTot (3 months of SKY rewards, 90-day stream) | 104,897,852.28 → **104,897,852 SKY** |
+| Stream rate (vestTot ÷ tau) | 13.4900 SKY/s |
+| Distributor pull per farm period (7 d) ≈ | 8,158,722 SKY |
 | vs MCD_VEST_SKY_TREASURY.cap 70.73 SKY/s | ok |
 
 ## ② Parameter block for the spell (computed vs published vs on-chain)
@@ -66,7 +66,7 @@ Treasury Management Function waterfall for the **October 2026** cycle (MSC#14): 
 | REWARDS_LSSKY_USDS.rewardsDuration | 2,119 s | — | — |  |
 | splitter.burn | 55% | — | — |  |
 | kicker.kbump | 6,000 USDS | unchanged | — | |
-| vestTot | 132,983,050 SKY | — | — |  |
+| vestTot | 104,897,852 SKY | — | — |  |
 | vestTau (days) | 90 d | — | — |  |
 | vestBgn | block.timestamp at cast | — | — | |
 | dist (stream beneficiary) | REWARDS_DIST_LSSKY_SKY | — | — | |
@@ -145,7 +145,7 @@ Blocks 26,093,738-26,316,188 (2026-10-01 00:00:00 UTC → 2026-10-31 23:59:59 UT
 | Farm | Annual rewards | Staked | APY |
 |---|---:|---:|---:|
 | USDS farm | 40,176,890 USDS | 8,717,371,541 SKY (≈ 658,423,905 USDS) | 6.10% |
-| SKY farm | 531,932,200 SKY | 8,679,702,908 SKY | 6.13% |
+| SKY farm | 419,591,409 SKY | 8,679,702,908 SKY | 4.83% |
 
 ## Cross-checks
 

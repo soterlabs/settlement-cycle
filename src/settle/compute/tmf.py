@@ -16,7 +16,8 @@ executive):
                                        kbump is held fixed; hop is SOLVED so the
                                        engine spends the budget over a 365/12-day
                                        month; splitter.burn = 55% (both buying legs)
-    Step 4  staking rewards          — SKY rewards = 45% leg ÷ prior-month TWAP;
+    Step 4  staking rewards          — Jul-Aug: 45% leg / monthly TWAP;
+                                       from Sep 2026: actual buys allocated to stakers;
                                        the treasury fronts them through a 90-day
                                        vest sized for 3 months (vestTot). The
                                        10/55 share of SKY actually bought under
@@ -183,6 +184,7 @@ class TmfInputs:
     sky_twap: Decimal                    # USDS per SKY — the month's TWAP
     aggregate_backstop_capital: Decimal  # USDS — "Sky Reserves"
     usds_supply: Decimal                 # USDS — sets the Target Backstop Capital
+    sky_rewards_from_buys: Decimal | None = None  # Actual burn-window staking share
 
 
 # ── Steps 1-4 ────────────────────────────────────────────────────────────────
@@ -263,7 +265,18 @@ def compute_waterfall(inputs: TmfInputs, policy: TmfPolicy) -> TmfWaterfall:
     annual = step3 * 12
 
     sky_bought_est = buy / inputs.sky_twap
-    sky_rewards = sky_leg / inputs.sky_twap
+    # BA calculator revision confirmed by the operator: effective for the
+    # September 2026 cycle (October executive). At 55% splitter.burn,
+    # actual purchases * 45/55 fund rewards; retain the 3x, 90-day runway.
+    # Missing observations must never silently fall back to a TWAP estimate.
+    if date.fromisoformat(inputs.month + "-01") >= date(2026, 9, 1):
+        if inputs.sky_rewards_from_buys is None:
+            raise ValueError("Actual SKY purchase attribution required from September 2026")
+        if not inputs.sky_rewards_from_buys.is_finite() or inputs.sky_rewards_from_buys < 0:
+            raise ValueError("Actual SKY staking share must be finite and nonnegative")
+        sky_rewards = inputs.sky_rewards_from_buys
+    else:
+        sky_rewards = sky_leg / inputs.sky_twap
     vest_exact = sky_rewards * policy.vest_runway_months
     vest_tot = _round0(vest_exact)
     stream_rate = vest_tot / D(policy.vest_tau_seconds)
@@ -493,19 +506,29 @@ def compute_tmf_monthly(
     else:
         raise KeyError(f"tmf {month}: usds_supply needs on-chain state or a config pin")
 
-    inputs = TmfInputs(
-        month=month, snr=snr, sky_twap=twap,
-        aggregate_backstop_capital=abc, usds_supply=usds_supply,
-    )
-    wf = compute_waterfall(inputs, policy)
-
-    # ── SBE execution in the month ──
+    actual_basis = date.fromisoformat(month + "-01") >= date(2026, 9, 1)
+    if actual_basis and activity is None:
+        raise ValueError("Actual SKY purchase activity required from September 2026")
+    if activity is not None and activity.month != month:
+        raise ValueError("SKY purchase activity month differs from TMF cycle")
+    # Reuse the same dated, per-regime attribution as the burn calculation.
     regimes = regimes_from_kicks(activity.kicks) if activity else []
     sky_month = sum((k.bought for k in activity.kicks), ZERO) if activity else ZERO
     usds_month = sum((k.lot for k in activity.kicks), ZERO) if activity else ZERO
     window, to_stakers, to_burn = attribute_burn(activity.kicks if activity else [], policy)
     sky_window = sum((k.bought for k in window), ZERO)
     usds_window = sum((k.lot for k in window), ZERO)
+    src["sky_rewards_basis"] = (
+        "Actual cycle-month burn-window SKY purchases allocated to stakers; "
+        "45/55 at the 55% regime, using each kick's regime; effective September 2026"
+        if actual_basis else "SKY rewards USDS budget divided by cycle-month SKY TWAP"
+    )
+    inputs = TmfInputs(
+        month=month, snr=snr, sky_twap=twap,
+        aggregate_backstop_capital=abc, usds_supply=usds_supply,
+        sky_rewards_from_buys=to_stakers if actual_basis else None,
+    )
+    wf = compute_waterfall(inputs, policy)
 
     pub = dict(month_cfg.get("spell") or {})
     r = TmfMonthly(
@@ -530,7 +553,7 @@ def compute_tmf_monthly(
     _check(r, "Step 3 capital", _q2(wf.step3_capital), pub.get("step3_capital"), unit="USDS")
     _check(r, "USDS staking rewards (45%)", _q2(wf.usds_rewards_usds), pub.get("usds_rewards"),
            unit="USDS")
-    _check(r, "SKY staking rewards (45% ÷ TWAP)", _q2(wf.sky_rewards_monthly),
+    _check(r, "SKY staking rewards (actual buys)" if actual_basis else "SKY staking rewards (45% ÷ TWAP)", _q2(wf.sky_rewards_monthly),
            pub.get("sky_rewards"), unit="SKY")
     _check(r, "splitter.hop", wf.hop, pub.get("hop"), tol=ZERO, unit="s")
     _check(r, "REWARDS_LSSKY_USDS.rewardsDuration", wf.hop, pub.get("rewards_duration_usds"),
@@ -757,7 +780,8 @@ def render_summary(r: TmfMonthly) -> str:
     L.append("")
     L.append("| Line | Value |")
     L.append("|---|---:|")
-    L.append(f"| Monthly SKY rewards (45% leg ÷ TWAP) → REWARDS_LSSKY_SKY | {_usds(wf.sky_rewards_monthly)} SKY |")
+    basis = "actual burn-window buys allocated to stakers" if i.sky_rewards_from_buys is not None else "45% leg / TWAP"
+    L.append(f"| Monthly SKY rewards ({basis}) → REWARDS_LSSKY_SKY | {_usds(wf.sky_rewards_monthly)} SKY |")
     L.append(f"| Monthly USDS rewards → REWARDS_LSSKY_USDS (via Splitter, per batch) | {_usds(wf.usds_rewards_usds)} USDS |")
     L.append(f"| vestTot ({p.vest_runway_months} months of SKY rewards, {p.vest_tau_days}-day stream) | {_usds(wf.vest_tot_exact)} → **{_usds(wf.vest_tot, 0)} SKY** |")
     L.append(f"| Stream rate (vestTot ÷ tau) | {wf.stream_rate:,.4f} SKY/s |")
