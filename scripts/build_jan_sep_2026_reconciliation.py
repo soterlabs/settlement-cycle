@@ -592,7 +592,7 @@ def calculate():
 
 def forum_post(data):
     totals = data["adjustment_totals"]
-    text = f"""# Settlement Reconciliation - MSC #5-#13 (January-September 2026)
+    text = f"""# MSC Reconciliation IV — MSC #5-#13 (January-September 2026)
 
 Draft for the October 2026 earning cycle (MSC #14, paid in November).
 October's ordinary settlement is presented separately.
@@ -756,14 +756,14 @@ Sky net means debt minted less transfers to agents.
 
 The [calculation package](https://github.com/soterlabs/settlement-cycle/pull/277)
 contains retained source inputs, hashes, per-venue and monthly results, the PR
-inventory, offline replay scripts and proposed **replacement** October values.
-Those values preserve ordinary October receipts and do not add another layer
-of historical credits. This draft changes no frozen report, production
-configuration, database revision or executed payment.
+inventory and offline replay scripts. This post covers only January-September
+corrections, carried once into the October settlement. October settlement
+totals and instructions are presented separately in
+[MSC #14](https://github.com/soterlabs/settlement-cycle/pull/275).
+This draft changes no frozen report, production configuration, database
+revision or executed payment.
 
-Partner rebates received in October are ordinary October income and excluded
-from this historical ledger. Spark's 75,063.88 October bridge CoF effect also
-belongs in October's ordinary calculation. Warehouse/Basin presentation and
+Warehouse/Basin presentation and
 venue CoF reattribution create no separate whole-prime credit. Basin's September
 activation remains dated. Osero referral codes 3014/3017 add no historical DR
 on the checked source. The existing zero-effect async findings remain unchanged.
@@ -802,7 +802,9 @@ def main():
     (destination / "proposed-october-adjustments.json").write_text(
         json.dumps(
             {
-                "status": "Proposed replacement values, not an additional layer of adjustments",
+                "status": "Superseded combined October snapshot — audit only; do not apply to settlement configuration",
+                "superseded_by": "https://github.com/soterlabs/settlement-cycle/pull/275",
+                "historical_source": "data.json:adjustment_totals",
                 "ordinary_october_receipts_preserved": True,
                 "msc_preview": {"2026-10": result["proposed_combined_october_adjustments"]},
             },

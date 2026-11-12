@@ -1,11 +1,11 @@
 {
-  "status": "replayed_with_june_20_21_idle_correction",
-  "executed_at_utc": "2026-11-11T22:20:19.546449+00:00",
+  "status": "replayed_publication_scope_fix_no_financial_changes",
+  "executed_at_utc": "2026-11-12T01:51:37.961967+00:00",
   "command": "PYTHONPATH=.:src python scripts/build_jan_sep_2026_reconciliation.py --output-dir reconciliation/2026-01_to_2026-09",
   "outputs_sha256": {
-    "data.json": "a41d6931afbbc68aa02c02131930ce675c67c7abf120e285770b38ee67211c10",
-    "proposed-october-adjustments.json": "f6d50afc2106b7173139b02c81e8393fa14587934770224a21bfc30597eea439",
-    "forum-post.md": "1dc109e0b23454caa8646d7988dce414f88b9231224a419111d393bc6d463336"
+    "data.json": "706b351eb7ae9904d4f0d22575668ec76f273006b6f98bba30364aecd197564f",
+    "proposed-october-adjustments.json": "75737e7d77cbdcc9637935d9f0f7d1d33bea97228605ff56a4ee1f58df693036",
+    "forum-post.md": "0941da7ffa10b10ae9dd8a19cf8bc6d161fce4216805d3820b2eb933fd6c971d"
   },
   "published_months_rewritten": false,
   "spark_sky_adjustment": "536094.04",

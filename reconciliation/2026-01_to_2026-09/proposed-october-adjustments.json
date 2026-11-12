@@ -1,5 +1,7 @@
 {
-  "status": "Proposed replacement values, not an additional layer of adjustments",
+  "status": "Superseded combined October snapshot \u2014 audit only; do not apply to settlement configuration",
+  "superseded_by": "https://github.com/soterlabs/settlement-cycle/pull/275",
+  "historical_source": "data.json:adjustment_totals",
   "ordinary_october_receipts_preserved": true,
   "msc_preview": {
     "2026-10": {

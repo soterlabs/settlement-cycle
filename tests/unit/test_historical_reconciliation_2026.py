@@ -50,7 +50,10 @@ def test_bridge_cutoff_and_small_buidl_correction_sign(ledger):
     assert post.startswith("> **Draft — not ready for booking:")
     assert "correction in PR #281" in post
     assert D(ledger["adjustment_totals"]["spark"]["sv_adj"]) == D("249141.52")
-    assert "75,063.88 October bridge" in post
+    assert "# MSC Reconciliation IV" in post
+    assert "partner rebate" not in post.lower()
+    assert "75,063.88" not in post
+    assert "MSC #14](https://github.com/soterlabs/settlement-cycle/pull/275)" in post
 
 
 def test_exact_lending_replay_replaces_overlap_and_nets_osero_payment(ledger):

@@ -1,3 +1,10 @@
+> **Scope:** Reconciliation IV covers January–September only. October settlement
+> totals and execution configuration belong to [PR #275](https://github.com/soterlabs/settlement-cycle/pull/275).
+> `proposed-october-adjustments.json` and the embedded
+> `proposed_combined_october_adjustments` in `data.json` are superseded audit
+> snapshots, not current configuration. Consume `adjustment_totals` for the
+> historical-only corrections; PR #275 composes the current October values.
+
 # January-September 2026 reconciliation
 
 Replay current applicable corrections starting with **PR #220**, through
@@ -20,7 +27,7 @@ The inventory covers 57 merged PRs. Actual policy dates remain in place;
 All figures are USDS. Negative Sky-share amounts reduce debt minting. Positive
 supply-side adjustments increase income; negative ones recover overstated
 income. Refunds increase the transfer without another loan. These are historical
-adjustments only; ordinary October partner receipts are excluded.
+adjustments only; October settlement income is outside this ledger.
 
 The exact lending replay adds **-1,089,098.10** to Spark's previous draft
 correction and **+283.23** to Grove's. Spark's S70 missing-venue correction is
