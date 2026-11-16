@@ -159,6 +159,7 @@ def test_average_publication_is_independent_of_python_hash_seed():
     import os
     import subprocess
     import sys
+    from pathlib import Path
 
     script = """
 from settle.revenue.margin_balances import build, days
@@ -170,7 +171,11 @@ print(digest(build("2026-09", daily, "3", source_refs={"source":"b"*64}, univers
     results = [
         subprocess.check_output(
             [sys.executable, "-c", script],
-            env={**os.environ, "PYTHONHASHSEED": str(seed)},
+            env={
+                **os.environ,
+                "PYTHONHASHSEED": str(seed),
+                "PYTHONPATH": str(Path(__file__).parents[2] / "src"),
+            },
             text=True,
         )
         for seed in (1, 2, 3)
