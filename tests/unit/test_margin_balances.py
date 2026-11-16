@@ -139,3 +139,17 @@ def test_raw_evidence_cannot_be_omitted_or_replaced(monkeypatch):
     raw.pop("2026-09-01")
     with pytest.raises(ValueError, match="coverage"):
         validate_evidence(doc, raw)
+
+
+def test_new_savings_expense_cannot_use_an_old_narrower_funding_average():
+    s = statement()
+    s["lines"].append(
+        {
+            "id": "funding.savings",
+            "components": [{"id": "funding.savings.venue.new_vault", "sign": 1}],
+        }
+    )
+    balances = [None] * 12
+    balances[8] = {"revision_id": "b" * 64, "document": evidence()}
+    with pytest.raises(ValueError, match="funding perimeters"):
+        project(s, [None] * 12, snapshot("spark", 2026), balances)

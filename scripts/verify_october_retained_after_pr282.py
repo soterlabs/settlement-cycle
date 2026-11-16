@@ -99,7 +99,7 @@ def replay(wallet_inputs=None):
     reporting_sources = {
         'src/settle/api/financial.py': '5a510e1df807a79fd2cc5379a1dfb4dca0b4badaac66c6583deb0c614b1208bb',
         'src/settle/api/allocations.py': 'd9b801eb16ab055fb53153c1fe7e53150bef7234614d91157ef0575c61c56188',
-        'src/settle/revenue/margins.py': '805f79902b1c0528228c4869b7cc7a978e9a093433932c0ea28e42be13736e7b',
+        'src/settle/revenue/margins.py': 'bd7b75f103839a5ba5d2e478a9562960112e0b98b744548e606a6d51f6879420',
         'src/settle/revenue/reporting_expenses.py': '8c31e4e67e4ab5a97edf40740a373e93bd1bd5ea24283d151ade13270807b56f',
         'src/settle/revenue/spark_expenses_2026.v1.json': 'cd770dc9a6b3065ea60bbdc10fa13b374c80c7038bba2b899d24f7a3610160a6',
         'src/settle/revenue/margin_balances.py': 'de09c269202b684d3183cfc005c3e0e15b9465687aa3cb52897d20354ff3a83e',

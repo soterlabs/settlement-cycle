@@ -220,6 +220,24 @@ def project(statement, allocations, expense_input, balances=None):
                 or period["state"] == "future"
             ):
                 raise ValueError("Margin balances and statement periods differ")
+            # A future statement may add another Savings expense. Do not use
+            # its larger numerator with this publication's narrower liabilities.
+            if "funding.savings" in lookup:
+
+                def funding_leaves(key):
+                    row = lookup.get(key, {})
+                    children = row.get("components", [])
+                    if not children:
+                        return {key}
+                    return set().union(*(funding_leaves(c["id"]) for c in children))
+
+                required_savings = {
+                    "funding.savings.venue." + key
+                    for key in evidence["averages"]["funding"]
+                    if key != "sky_debt"
+                }
+                if funding_leaves("funding.savings") != required_savings:
+                    raise ValueError("Statement and average funding perimeters differ")
             a = metric(evidence["average_allocated_assets"])
             f = metric(evidence["average_funding"])
             for value in (a, f):
