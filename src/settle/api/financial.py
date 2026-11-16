@@ -79,6 +79,53 @@ def register_financial(app, get_reader, document_response):
                   r=Depends(get_reader)):  # noqa: B008
         return document_response(request, annual(prime, year, scope, cutoff, revision, r, accounting=accounting, review=review))
 
+    @app.get('/v3/reporting/expenses')
+    def expenses(request: Request, prime: str, year: int,
+                 revision: str | None = Query(None, pattern=r'^[a-f0-9]{64}$')):
+        from ..revenue.reporting_expenses import snapshot
+        try:
+            result = snapshot(prime, year, revision)
+        except ValueError as exc:
+            raise HTTPException(404, str(exc)) from None
+        return document_response(request, result)
+
+    @app.get('/v3/reporting/margins')
+    def margins(request: Request, prime: str, year: int = Query(ge=2020, le=9998),
+                cutoff: date | None = None,
+                revision: str | None = Query(None, max_length=16384),
+                r=Depends(get_reader)):  # noqa: B008
+        from ..revenue import margins as projection
+        from ..revenue.reporting_expenses import snapshot
+        if prime != 'spark' or year != 2026:
+            raise HTTPException(404, 'Margins currently support Spark 2026')
+        if cutoff and revision:
+            raise HTTPException(422, 'Select a cutoff or a revision')
+        try:
+            selection = projection.decode(revision, prime, year) if revision else None
+            expense_input = snapshot(prime, year, selection['expenses'] if selection else None)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        source = annual(prime, year, 'individual', cutoff,
+                        selection['statement'] if selection else None, r, accounting=True, review=True)
+        publications = []
+        import calendar
+        for i, period in enumerate(source['periods']):
+            month = period['key']
+            end = f"{month}-{calendar.monthrange(year, i + 1)[1]:02}"
+            ref = selection['allocations'][i] if selection else None
+            if (selection and ref is None) or (period.get('expected_cutoff') or '') < end or period['state'] == 'future':
+                publications.append(None)
+                continue
+            doc = read(r.monthly_allocations, prime, month, revision=ref)
+            if ref and (not doc or doc['revision_id'] != ref):
+                raise HTTPException(404, 'Pinned allocation publication unavailable')
+            publications.append(doc)
+        try:
+            result = projection.project(source, publications, expense_input)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        return document_response(request, result)
+
     @app.get('/v3/reporting/spark/msc-reconciliation')
     def spark_msc_reconciliation(request: Request, year: int = Query(ge=2020, le=9998),
                                  month: str | None = Query(None, pattern=r'^\d{4}-(0[1-9]|1[0-2])$'),
