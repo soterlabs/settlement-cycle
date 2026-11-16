@@ -34,13 +34,10 @@ operating includes contributor SPK compensation once. These are management
 categories, not a claim to audited tax or legal-entity profit.
 
 `months[].metrics` defines monthly yield, funding cost/asset, funding rate, NIS,
-NIM, NRM before/after incentives, and NM. Full Spark ratios remain unavailable in
-this first version: the current publications do not provide full-perimeter
-monthly average assets and average actual Sky debt plus Savings liabilities.
-They must not be replaced by closing balance-sheet stocks, original principal,
-or a sum of only the covered venue rows. This is an explicit remaining data task.
-The endpoint is useful now for statement-matched dollar numerators and the
-separate covered-allocation calculation; it does not claim to unlock all margins.
+NIM, NRM before/after incentives, and NM. Full Spark ratios are populated when the daily average-balance worker has
+published matching inputs for the month (see below). Missing averages must not
+be replaced by closing balance-sheet stocks, original principal, or a subtotal
+of only the covered venue rows.
 
 `months[].allocation_slice` sums revenue, modeled Sky cost and average exposure
 for the same positive-exposure rows, then divides summed dollars by summed average
@@ -70,3 +67,32 @@ compensation once, partial periods, revision validation, and request guards.
 The retained live September reviewed statement was projected offline: its net
 income equals the existing reporting-dashboard composition at full precision.
 No production publication or settlement report was changed.
+
+## Published average balances
+
+A reporting-only worker now supplies complete daily EOD averages for a closed
+month. `python -m settle.revenue.margin_balance_job --month 2026-09
+--cache-dir /data/spark-margin-balances --publish` checkpoints each day and
+reuses retained month-end stock observations. It does not run a settlement replay.
+
+The asset denominator is the operational allocation book: configured investment
+positions and idle balances, Savings idle buffers, PSM3 claims, additional WETH
+and Steakhouse exposure and staked SKY. The existing reporting ownership adapter
+removes designated Sky pool legs. Anchorage is added once using published daily
+outstanding facility principal; escrow cash is not a proxy for loan principal.
+Uninvested treasury tokens, MSC receivables and other accounting receivables are
+outside allocated assets. Consequently these are management returns on allocated
+assets, not returns on total balance-sheet assets or equity.
+
+The funding-rate denominator uses actual Vat Art × rate and the six Savings
+liabilities represented in `statement.funding`. Newer B/S-only Savings vaults are
+not silently added to the denominator of expenses that omit their interest.
+All numerator amounts, recognition policies, provisional expense assumptions,
+settlement charges and reconciliation residuals remain unchanged.
+
+The API populates its existing metrics only when all required daily components
+are present. NIS subtracts the funding rate (funding expense / average funding)
+from investment yield (investment income / average allocated assets). The other
+ratios use average allocated assets. `balance_evidence` exposes component averages
+and limitations. New selection tokens pin the balance publication; old selection
+tokens continue to reproduce their original missing-denominator results.
