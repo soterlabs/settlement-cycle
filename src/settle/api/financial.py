@@ -122,6 +122,8 @@ def register_financial(app, get_reader, document_response):
             publications.append(doc)
         try:
             result = projection.project(source, publications, expense_input)
+            if selection and projection.decode(result['selection'], prime, year) != selection:
+                raise ValueError('Pinned margins inputs do not match the statement period')
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from None
         return document_response(request, result)

@@ -97,7 +97,7 @@ def replay(wallet_inputs=None):
     # None of these inputs enters October settlement computation. Bind the exact
     # reviewed files instead of broadly exempting future revenue-module changes.
     reporting_sources = {
-        'src/settle/api/financial.py': 'dc5da52b6eb6d867b69a35f98c35b202cbba7cf720ce0663c3569c1dedc5867e',
+        'src/settle/api/financial.py': 'b6eaa798e852cb045065ecc34b5251fa7079d189b32420b684d173991b690e14',
         'src/settle/revenue/margins.py': 'c6dec67098d35a5dac42bf9b87973d121f6d96241aa237dc6b5ac016bebadfe7',
         'src/settle/revenue/reporting_expenses.py': '8c31e4e67e4ab5a97edf40740a373e93bd1bd5ea24283d151ade13270807b56f',
         'src/settle/revenue/spark_expenses_2026.v1.json': 'cd770dc9a6b3065ea60bbdc10fa13b374c80c7038bba2b899d24f7a3610160a6',

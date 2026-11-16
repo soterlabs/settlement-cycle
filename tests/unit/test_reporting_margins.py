@@ -184,3 +184,54 @@ def test_http_endpoints_are_read_only_and_pin_allocations(monkeypatch):
         c.get("/v3/reporting/expenses?prime=spark&year=2026&revision=" + "0" * 64).status_code
         == 404
     )
+
+
+def test_pinned_future_allocation_is_not_silently_discarded(monkeypatch):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from settle.api import financial, revenue
+    from settle.revenue.margins import encode
+
+    s = statement()
+    for period in s["periods"]:
+        period["financial_revision"] = None
+    monkeypatch.setattr(financial, "statements", lambda *args, **kwargs: deepcopy(s))
+    monkeypatch.setattr(
+        financial,
+        "decode_selection",
+        lambda *args: {
+            "as_of": "2026-09-30",
+            "revisions": [],
+            "policy_version": "test",
+            "exact": True,
+        },
+    )
+    monkeypatch.setattr(revenue, "today", lambda: date(2026, 10, 1))
+
+    class Reader:
+        def financial_year(self, *args, **kwargs):
+            return []
+
+        def monthly_allocations(self, *args, **kwargs):
+            return None
+
+    app = FastAPI()
+    financial.register_financial(app, lambda: Reader(), lambda request, doc: doc)
+    client = TestClient(app)
+    result = client.get("/v3/reporting/margins?prime=spark&year=2026").json()
+    selection = decode(result["selection"], "spark", 2026)
+    assert (
+        client.get(
+            "/v3/reporting/margins",
+            params={"prime": "spark", "year": 2026, "revision": encode(selection)},
+        ).status_code
+        == 200
+    )
+    selection["allocations"][11] = "b" * 64
+    response = client.get(
+        "/v3/reporting/margins",
+        params={"prime": "spark", "year": 2026, "revision": encode(selection)},
+    )
+    assert response.status_code == 422
+    assert "Pinned margins inputs" in response.text
