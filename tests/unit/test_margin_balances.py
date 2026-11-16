@@ -164,7 +164,7 @@ def test_average_publication_is_independent_of_python_hash_seed():
     script = """
 from settle.revenue.margin_balances import build, days
 from settle.revenue.verification import digest
-assets = {str(i): str(i + 1) + '.' + str(i % 9 + 1) * 95 for i in range(20)}
+assets = {str(i): str(i + 1) + '.' + str(i % 9 + 1) * 110 for i in range(20)}
 daily = [{"date": d, "assets": assets, "funding": {"sky_debt":"5"}, "evidence_hash":"a"*64} for d in days("2026-09")]
 print(digest(build("2026-09", daily, "3", source_refs={"source":"b"*64}, universe={"assets":list(assets),"funding":["sky_debt"]})))
 """
