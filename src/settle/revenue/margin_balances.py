@@ -22,7 +22,9 @@ DDL = """CREATE TABLE IF NOT EXISTS reporting_margin_balances (
  document_hash text NOT NULL, code_version text NOT NULL,
  computed_at timestamptz NOT NULL DEFAULT now());
  CREATE INDEX IF NOT EXISTS reporting_margin_balances_month
- ON reporting_margin_balances(prime,month,publication_order DESC);"""
+ ON reporting_margin_balances(prime,month,publication_order DESC);
+ CREATE TABLE IF NOT EXISTS reporting_margin_balance_evidence (
+ evidence_hash text PRIMARY KEY, cutoff date NOT NULL, document jsonb NOT NULL);"""
 
 
 def number(value):
@@ -113,9 +115,26 @@ def validate(doc):
     return doc
 
 
-def publish(conn, document, code):
+def validate_evidence(document, evidence):
+    from .margin_balance_job import daily_row
+
+    if set(evidence) != {r["date"] for r in document["daily"]}:
+        raise ValueError("Daily raw evidence coverage differs")
+    for row in document["daily"]:
+        raw = evidence[row["date"]]
+        if daily_row(raw["stocks"], raw["supplement"]) != row:
+            raise ValueError("Published balances differ from raw evidence")
+
+
+def publish(conn, document, code, evidence):
     validate(document)
+    validate_evidence(document, evidence)
     conn.execute(DDL)
+    for row in document["daily"]:
+        conn.execute(
+            "INSERT INTO reporting_margin_balance_evidence(evidence_hash,cutoff,document) VALUES(%s,%s,%s) ON CONFLICT DO NOTHING",
+            (row["evidence_hash"], row["date"], Jsonb(evidence[row["date"]])),
+        )
     hashed = digest(document)
     revision = digest({"document_hash": hashed, "code_version": code})
     conn.execute(

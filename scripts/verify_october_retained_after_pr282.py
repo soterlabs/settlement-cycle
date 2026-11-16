@@ -99,11 +99,11 @@ def replay(wallet_inputs=None):
     reporting_sources = {
         'src/settle/api/financial.py': '5a510e1df807a79fd2cc5379a1dfb4dca0b4badaac66c6583deb0c614b1208bb',
         'src/settle/api/allocations.py': 'd9b801eb16ab055fb53153c1fe7e53150bef7234614d91157ef0575c61c56188',
-        'src/settle/revenue/margins.py': '95b4229555a2f112251a07c105a66e70e4da0523d9374584ddb74de0def07cb5',
+        'src/settle/revenue/margins.py': '805f79902b1c0528228c4869b7cc7a978e9a093433932c0ea28e42be13736e7b',
         'src/settle/revenue/reporting_expenses.py': '8c31e4e67e4ab5a97edf40740a373e93bd1bd5ea24283d151ade13270807b56f',
         'src/settle/revenue/spark_expenses_2026.v1.json': 'cd770dc9a6b3065ea60bbdc10fa13b374c80c7038bba2b899d24f7a3610160a6',
-        'src/settle/revenue/margin_balances.py': '147813b12f364a1347cc2686f04c8e4fc1c35ef77ce0d0388a4fece19480c1aa',
-        'src/settle/revenue/margin_balance_job.py': '83be053e2920b23888f6a5662e53dd92bd1ff8e70e58f4ecc1d26b57e72a4dc4',
+        'src/settle/revenue/margin_balances.py': 'de09c269202b684d3183cfc005c3e0e15b9465687aa3cb52897d20354ff3a83e',
+        'src/settle/revenue/margin_balance_job.py': '3d860f42419379752786c23e75fac88558bc3f570fd7186b91b7cff9cbfd6c2f',
     }
     for path, sha in reporting_sources.items():
         if path in changed:

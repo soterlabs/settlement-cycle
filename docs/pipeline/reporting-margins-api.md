@@ -34,13 +34,10 @@ operating includes contributor SPK compensation once. These are management
 categories, not a claim to audited tax or legal-entity profit.
 
 `months[].metrics` defines monthly yield, funding cost/asset, funding rate, NIS,
-NIM, NRM before/after incentives, and NM. Full Spark ratios remain unavailable in
-this first version: the current publications do not provide full-perimeter
-monthly average assets and average actual Sky debt plus Savings liabilities.
-They must not be replaced by closing balance-sheet stocks, original principal,
-or a sum of only the covered venue rows. This is an explicit remaining data task.
-The endpoint is useful now for statement-matched dollar numerators and the
-separate covered-allocation calculation; it does not claim to unlock all margins.
+NIM, NRM before/after incentives, and NM. Full Spark ratios are populated when the daily average-balance worker has
+published matching inputs for the month (see below). Missing averages must not
+be replaced by closing balance-sheet stocks, original principal, or a subtotal
+of only the covered venue rows.
 
 `months[].allocation_slice` sums revenue, modeled Sky cost and average exposure
 for the same positive-exposure rows, then divides summed dollars by summed average

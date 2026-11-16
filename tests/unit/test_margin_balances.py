@@ -79,3 +79,63 @@ def test_old_pinned_selection_remains_without_new_balances():
     result = project(s, [None] * 12, snapshot("spark", 2026))
     assert "balances" not in decode(result["selection"], "spark", 2026)
     assert all(m["metrics"]["nim"]["value"] is None for m in result["months"])
+
+
+def test_daily_scope_keeps_savings_idle_assets_and_savings_liabilities_separate():
+    import gzip
+    import json
+    from pathlib import Path
+
+    from settle.revenue.margin_balance_job import daily_row
+
+    path = Path(__file__).parents[1] / "fixtures" / "spark_closing_stocks_october.json.gz"
+    with gzip.open(path, "rt") as f:
+        raw = json.load(f)
+    from settle.revenue.verification import digest
+
+    raw["extra_assets"]["alm_eth"] = {
+        "status": "available",
+        "value": "0",
+        "quality": "supported",
+        "read_indices": [],
+    }
+    raw["proof_hash"] = digest({k: v for k, v in raw.items() if k != "proof_hash"})
+    extra = {
+        "values": {
+            "steakhouse": "3",
+            "sky_staking": "0",
+            **{
+                k: "0"
+                for k, v in raw["extra_assets"].items()
+                if v.get("basis") == "cash_perimeter_exclusion"
+            },
+            "idle.S56": "7",
+        }
+    }
+    row = daily_row(raw, extra)
+    assert row["assets"]["idle.S56"] == "7"
+    assert "S56" not in row["assets"]
+    assert row["funding"]["S56"] == raw["liabilities"]["S56"]["value"]
+    assert "xlayer_usdc" not in row["funding"]  # Its interest is not in the statement.
+    assert row["assets"]["S62"] == raw["ownership"]["S62"]["prime_value"]
+    assert "S23" not in row["assets"]  # Facility is added separately, once.
+    del extra["values"]["idle.S56"]
+    with pytest.raises(ValueError, match="supplement coverage"):
+        daily_row(raw, extra)
+
+
+def test_raw_evidence_cannot_be_omitted_or_replaced(monkeypatch):
+    from settle.revenue import margin_balance_job
+    from settle.revenue.margin_balances import validate_evidence
+
+    doc = evidence()
+    raw = {r["date"]: {"stocks": r, "supplement": {}} for r in doc["daily"]}
+    monkeypatch.setattr(margin_balance_job, "daily_row", lambda stocks, _: stocks)
+    validate_evidence(doc, raw)
+    wrong = deepcopy(raw)
+    wrong["2026-09-01"]["stocks"]["assets"]["venue"] = "0"
+    with pytest.raises(ValueError, match="raw evidence"):
+        validate_evidence(doc, wrong)
+    raw.pop("2026-09-01")
+    with pytest.raises(ValueError, match="coverage"):
+        validate_evidence(doc, raw)

@@ -322,7 +322,11 @@ def project(statement, allocations, expense_input, balances=None):
             expense_classification="direct = distribution + other; incentives separate; operating includes contributor compensation once",
             net_margin="management_net_return_on_assets_not_revenue_margin_or_tax_certification",
             reconciliation="deferred_not_redistributed; full Spark numerators use statement funding, not allocation cost subtotal",
-            denominator="Published daily allocation-book and actual funding averages when available; covered venue averages remain a separate diagnostic. Returns on allocated assets, not equity or total accounting NAV.",
+            denominator=(
+                "Published daily allocation-book and actual funding averages when available; covered venue averages remain a separate diagnostic. Returns on allocated assets, not equity or total accounting NAV."
+                if balances is not None
+                else "covered venue averages disclosed separately; not certified full Spark average assets or average funding"
+            ),
         ),
     )
     result["report_hash"] = digest(result)

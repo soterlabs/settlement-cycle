@@ -5,6 +5,7 @@ Usage: python -m settle.revenue.margin_balance_job --month 2026-09
 """
 
 import argparse
+import fcntl
 import gzip
 import json
 import os
@@ -50,7 +51,9 @@ def universe():
     )
     return {
         "assets": sorted([*positions, "sparklend_weth", *extra]),
-        "funding": sorted([v.id for v in prime.venues if str(v.pricing_category) == "S2"] + ["sky_debt"]),
+        "funding": sorted(
+            [v.id for v in prime.venues if str(v.pricing_category) == "S2"] + ["sky_debt"]
+        ),
     }
 
 
@@ -115,13 +118,22 @@ def daily_row(document, extra):
 
     assets = {k: value(v) for k, v in document["positions"].items() if k != "S23"}
     assets.update({k: value(v) for k, v in document["extra_assets"].items()})
-    assets.update(extra["values"])
+    expected_supplement = {"steakhouse", "sky_staking"} | {
+        k
+        for k, v in document["extra_assets"].items()
+        if v.get("basis") == "cash_perimeter_exclusion"
+    }
+    if set(extra["values"]) != expected_supplement:
+        raise ValueError("Savings idle supplement coverage differs")
+    assets.update({k: str(model.number(v)) for k, v in extra["values"].items()})
     # The current reporting book has no non-LP Sky-direct claim in these months.
     # Fail closed if one appears: the ownership adapter must explicitly remove it.
     for venue in ("S20", "S21"):
         if D(assets.get(venue, "0")):
             raise ValueError("Nonzero historical Sky-direct RWA requires ownership attribution")
-    funding = {k: value(document["liabilities"][k]) for k in universe()["funding"] if k != "sky_debt"}
+    funding = {
+        k: value(document["liabilities"][k]) for k in universe()["funding"] if k != "sky_debt"
+    }
     funding["sky_debt"] = value(document["sky_debt"])
     expected = universe()
     if set(assets) != set(expected["assets"]) or set(funding) != set(expected["funding"]):
@@ -142,6 +154,15 @@ def atomic_json(path, document):
 
 
 def run(month, cache, *, publish=False, workers=2):
+    model.days(month)
+    folder = Path(cache) / month
+    folder.mkdir(parents=True, exist_ok=True)
+    with (folder / ".lock").open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return _run(month, cache, publish=publish, workers=workers)
+
+
+def _run(month, cache, *, publish=False, workers=2):
     dates = model.days(month)
     if date.fromisoformat(dates[-1]) >= date.today():
         raise ValueError("Only closed calendar months")
@@ -177,11 +198,19 @@ def run(month, cache, *, publish=False, workers=2):
             doc, extra = saved["stocks"], saved["supplement"]
         else:
             retained_doc = sources.get(day, {}).get("document")
+            stock_path = cache / (day + ".stocks.json.gz")
+            if stock_path.exists():
+                with gzip.open(stock_path, "rt") as f:
+                    retained_doc = json.load(f)
             doc = retained_doc or stocks.collect(
                 date.fromisoformat(day),
                 candidates=pins.get(date.fromisoformat(day)),
                 progress=lambda stage: print(json.dumps({"date": day, "stage": stage}), flush=True),
             )
+            balance_sheet_store.validate(doc)
+            if set(doc["errors"]) - {"S23"}:
+                raise ValueError("Daily stock collection incomplete: " + str(doc["errors"]))
+            atomic_json(stock_path, doc)
             with localcontext() as ctx:
                 ctx.prec = 100
                 extra = supplement(doc)
@@ -206,8 +235,13 @@ def run(month, cache, *, publish=False, workers=2):
             os.environ.get("RAILWAY_GIT_COMMIT_SHA")
             or subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         )
+        evidence = {}
+        for day in dates:
+            with gzip.open(cache / (day + ".json.gz"), "rt") as f:
+                evidence[day] = json.load(f)
         with connect(autocommit=True) as conn:
-            revision = model.publish(conn, document, code)
+            with conn.transaction():
+                revision = model.publish(conn, document, code, evidence)
         print(
             json.dumps(
                 {
