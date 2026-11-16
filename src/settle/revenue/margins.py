@@ -30,7 +30,11 @@ def decode(value, prime, year):
     try:
         d = json.loads(base64.urlsafe_b64decode(value + "=" * (-len(value) % 4)))
         if (
-            set(d) != {"policy", "prime", "year", "statement", "allocations", "expenses"}
+            set(d)
+            not in (
+                {"policy", "prime", "year", "statement", "allocations", "expenses"},
+                {"policy", "prime", "year", "statement", "allocations", "expenses", "balances"},
+            )
             or d["policy"] != POLICY
             or d["prime"] != prime
             or d["year"] != year
@@ -43,7 +47,9 @@ def decode(value, prime, year):
             or len(d["allocations"]) != 12
         ):
             raise ValueError()
-        for ref in [d["expenses"], *d["allocations"]]:
+        if "balances" in d and (not isinstance(d["balances"], list) or len(d["balances"]) != 12):
+            raise ValueError()
+        for ref in [d["expenses"], *d["allocations"], *d.get("balances", [])]:
             if ref is not None and (
                 not isinstance(ref, str)
                 or len(ref) != 64
@@ -152,16 +158,18 @@ def allocation_slice(doc, month):
     )
 
 
-def project(statement, allocations, expense_input):
+def project(statement, allocations, expense_input, balances=None):
     if (
         statement["prime"] != "spark"
         or statement["year"] != 2026
         or not statement.get("review_policy")
     ):
         raise ValueError("Margins require Spark 2026 reviewed reporting statements")
+    if balances is not None and len(balances) != 12:
+        raise ValueError("Twelve balance selections required")
     lookup = {row["id"]: row for row in statement["lines"]}
     months, allocation_refs = [], []
-    for period, doc in zip(statement["periods"], allocations, strict=True):
+    for index, (period, doc) in enumerate(zip(statement["periods"], allocations, strict=True)):
         month = period["key"]
         end = f"{month}-{calendar.monthrange(2026, int(month[5:]))[1]:02}"
         if doc is not None and (
@@ -200,6 +208,26 @@ def project(statement, allocations, expense_input):
         if covered.get("amounts"):
             a.update(status="partial", known_value=covered["amounts"]["assets"]["value"])
         f = metric(reason="average_actual_Sky_debt_plus_savings_liabilities_not_published")
+        balance = balances[index] if balances else None
+        if balance:
+            from .margin_balances import validate
+
+            evidence = validate(balance["document"])
+            if (
+                evidence["month"] != month
+                or evidence["period"]["end"] != end
+                or (period.get("expected_cutoff") or "") < end
+                or period["state"] == "future"
+            ):
+                raise ValueError("Margin balances and statement periods differ")
+            a = metric(evidence["average_allocated_assets"])
+            f = metric(evidence["average_funding"])
+            for value in (a, f):
+                value.update(
+                    quality="estimate",
+                    basis=evidence["basis"],
+                    source_refs=[balance["revision_id"]],
+                )
         numerators = dict(
             investment_income=r,
             funding_expense=c,
@@ -227,6 +255,15 @@ def project(statement, allocations, expense_input):
             nrm_after_incentives=ratio(after, a),
             nm=ratio(net, a),
         )
+        if balance:
+            yield_cell, cost_cell = metrics["allocation_yield"], metrics["funding_rate"]
+            if yield_cell["status"] == cost_cell["status"] == "available":
+                with localcontext() as ctx:
+                    ctx.prec = 60
+                    metrics["nis"] = {
+                        **yield_cell,
+                        "value": str(Decimal(yield_cell["value"]) - Decimal(cost_cell["value"])),
+                    }
         months.append(
             dict(
                 month=month,
@@ -236,6 +273,18 @@ def project(statement, allocations, expense_input):
                 metrics=metrics,
                 allocation_slice=covered,
                 expense_basis=expense_input["snapshot"]["operating_basis"].get(month),
+                **(
+                    {
+                        "balance_evidence": {
+                            "revision": balance["revision_id"],
+                            "scope": evidence["scope"],
+                            "averages": evidence["averages"],
+                            "limitations": evidence["limitations"],
+                        }
+                    }
+                    if balance
+                    else {}
+                ),
             )
         )
     selection = encode(
@@ -246,6 +295,11 @@ def project(statement, allocations, expense_input):
             statement=statement["selection"],
             allocations=allocation_refs,
             expenses=expense_input["revision_id"],
+            **(
+                {"balances": [b["revision_id"] if b else None for b in balances]}
+                if balances is not None
+                else {}
+            ),
         )
     )
     result = dict(
@@ -268,7 +322,7 @@ def project(statement, allocations, expense_input):
             expense_classification="direct = distribution + other; incentives separate; operating includes contributor compensation once",
             net_margin="management_net_return_on_assets_not_revenue_margin_or_tax_certification",
             reconciliation="deferred_not_redistributed; full Spark numerators use statement funding, not allocation cost subtotal",
-            denominator="covered venue averages disclosed separately; not certified full Spark average assets or average funding",
+            denominator="Published daily allocation-book and actual funding averages when available; covered venue averages remain a separate diagnostic. Returns on allocated assets, not equity or total accounting NAV.",
         ),
     )
     result["report_hash"] = digest(result)

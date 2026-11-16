@@ -9,6 +9,11 @@ from ..revenue.verification import PRIMES
 
 
 class AllocationReaderMixin:
+    def margin_balances(self, month, *, revision=None):
+        from ..revenue.margin_balances import read
+        with self._pool.connection() as conn:
+            return read(conn, month, revision)
+
     def monthly_allocations(self, prime, month, *, revision=None):
         with self._pool.connection() as conn:
             return store.read(conn, prime, month, revision=revision)

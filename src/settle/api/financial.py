@@ -121,7 +121,21 @@ def register_financial(app, get_reader, document_response):
                 raise HTTPException(404, 'Pinned allocation publication unavailable')
             publications.append(doc)
         try:
-            result = projection.project(source, publications, expense_input)
+            balances = None
+            if selection is None or "balances" in selection:
+                balances = []
+                for i, period in enumerate(source["periods"]):
+                    month = period["key"]
+                    end = f"{month}-{calendar.monthrange(year, i + 1)[1]:02}"
+                    ref = selection["balances"][i] if selection else None
+                    eligible = period["state"] != "future" and (period.get("expected_cutoff") or "") >= end
+                    row = None
+                    if eligible and (selection is None or ref) and hasattr(r, "margin_balances"):
+                        row = read(r.margin_balances, month, revision=ref)
+                    if ref and (not row or row["revision_id"] != ref):
+                        raise HTTPException(404, "Pinned margin balances unavailable")
+                    balances.append(row)
+            result = projection.project(source, publications, expense_input, balances)
             if selection and projection.decode(result['selection'], prime, year) != selection:
                 raise ValueError('Pinned margins inputs do not match the statement period')
         except ValueError as exc:

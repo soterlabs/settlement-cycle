@@ -97,10 +97,13 @@ def replay(wallet_inputs=None):
     # None of these inputs enters October settlement computation. Bind the exact
     # reviewed files instead of broadly exempting future revenue-module changes.
     reporting_sources = {
-        'src/settle/api/financial.py': 'b6eaa798e852cb045065ecc34b5251fa7079d189b32420b684d173991b690e14',
-        'src/settle/revenue/margins.py': 'c6dec67098d35a5dac42bf9b87973d121f6d96241aa237dc6b5ac016bebadfe7',
+        'src/settle/api/financial.py': '5a510e1df807a79fd2cc5379a1dfb4dca0b4badaac66c6583deb0c614b1208bb',
+        'src/settle/api/allocations.py': 'd9b801eb16ab055fb53153c1fe7e53150bef7234614d91157ef0575c61c56188',
+        'src/settle/revenue/margins.py': '95b4229555a2f112251a07c105a66e70e4da0523d9374584ddb74de0def07cb5',
         'src/settle/revenue/reporting_expenses.py': '8c31e4e67e4ab5a97edf40740a373e93bd1bd5ea24283d151ade13270807b56f',
         'src/settle/revenue/spark_expenses_2026.v1.json': 'cd770dc9a6b3065ea60bbdc10fa13b374c80c7038bba2b899d24f7a3610160a6',
+        'src/settle/revenue/margin_balances.py': '147813b12f364a1347cc2686f04c8e4fc1c35ef77ce0d0388a4fece19480c1aa',
+        'src/settle/revenue/margin_balance_job.py': '83be053e2920b23888f6a5662e53dd92bd1ff8e70e58f4ecc1d26b57e72a4dc4',
     }
     for path, sha in reporting_sources.items():
         if path in changed:

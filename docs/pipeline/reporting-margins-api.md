@@ -70,3 +70,32 @@ compensation once, partial periods, revision validation, and request guards.
 The retained live September reviewed statement was projected offline: its net
 income equals the existing reporting-dashboard composition at full precision.
 No production publication or settlement report was changed.
+
+## Published average balances
+
+A reporting-only worker now supplies complete daily EOD averages for a closed
+month. `python -m settle.revenue.margin_balance_job --month 2026-09
+--cache-dir /data/spark-margin-balances --publish` checkpoints each day and
+reuses retained month-end stock observations. It does not run a settlement replay.
+
+The asset denominator is the operational allocation book: configured investment
+positions and idle balances, Savings idle buffers, PSM3 claims, additional WETH
+and Steakhouse exposure and staked SKY. The existing reporting ownership adapter
+removes designated Sky pool legs. Anchorage is added once using published daily
+outstanding facility principal; escrow cash is not a proxy for loan principal.
+Uninvested treasury tokens, MSC receivables and other accounting receivables are
+outside allocated assets. Consequently these are management returns on allocated
+assets, not returns on total balance-sheet assets or equity.
+
+The funding-rate denominator uses actual Vat Art × rate and the six Savings
+liabilities represented in `statement.funding`. Newer B/S-only Savings vaults are
+not silently added to the denominator of expenses that omit their interest.
+All numerator amounts, recognition policies, provisional expense assumptions,
+settlement charges and reconciliation residuals remain unchanged.
+
+The API populates its existing metrics only when all required daily components
+are present. NIS subtracts the funding rate (funding expense / average funding)
+from investment yield (investment income / average allocated assets). The other
+ratios use average allocated assets. `balance_evidence` exposes component averages
+and limitations. New selection tokens pin the balance publication; old selection
+tokens continue to reproduce their original missing-denominator results.
