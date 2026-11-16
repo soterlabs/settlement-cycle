@@ -153,3 +153,26 @@ def test_new_savings_expense_cannot_use_an_old_narrower_funding_average():
     balances[8] = {"revision_id": "b" * 64, "document": evidence()}
     with pytest.raises(ValueError, match="funding perimeters"):
         project(s, [None] * 12, snapshot("spark", 2026), balances)
+
+
+def test_average_publication_is_independent_of_python_hash_seed():
+    import os
+    import subprocess
+    import sys
+
+    script = """
+from settle.revenue.margin_balances import build, days
+from settle.revenue.verification import digest
+assets = {str(i): str(i + 1) + '.' + str(i % 9 + 1) * 95 for i in range(20)}
+daily = [{"date": d, "assets": assets, "funding": {"sky_debt":"5"}, "evidence_hash":"a"*64} for d in days("2026-09")]
+print(digest(build("2026-09", daily, "3", source_refs={"source":"b"*64}, universe={"assets":list(assets),"funding":["sky_debt"]})))
+"""
+    results = [
+        subprocess.check_output(
+            [sys.executable, "-c", script],
+            env={**os.environ, "PYTHONHASHSEED": str(seed)},
+            text=True,
+        )
+        for seed in (1, 2, 3)
+    ]
+    assert len(set(results)) == 1

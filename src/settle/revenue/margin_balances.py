@@ -59,7 +59,7 @@ def build(month, daily, facility, *, source_refs, universe):
         raise ValueError("Facility must not also appear in daily assets")
     with localcontext() as ctx:
         ctx.prec = 100
-        averages = {family: {key: Decimal(0) for key in keys} for family, keys in required.items()}
+        averages = {family: {key: Decimal(0) for key in sorted(keys)} for family, keys in required.items()}
         for row in daily:
             if not re.fullmatch(r"[a-f0-9]{64}", row["evidence_hash"]):
                 raise ValueError("Daily evidence identity required")
