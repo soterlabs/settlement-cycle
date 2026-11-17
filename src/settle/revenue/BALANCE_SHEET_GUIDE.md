@@ -119,3 +119,41 @@ by [Maple's address registry](https://github.com/maple-labs/address-registry/blo
 the documented owner-specific queued/manual-share getters and all existing
 asset/pool/controller checks still apply. The pointer and deployed implementation
 code are captured from chain. This does not expand the MSC allowlist.
+
+## Controlled Savings shares (closing evidence extension)
+
+The closing-stock job now captures `savings_control`: a full Cartesian check of
+all configured Savings vaults against the reviewed cash-flow controlled wallets
+on each chain, plus the Savings vault contracts themselves. `balanceOf(owner)`
+proves the shares; nonzero shares are valued through `convertToAssets(shares)`
+and the same underlying/USD basis as the gross vault liability. `totalSupply`
+and `totalAssets` bound the combined internal claims. The evidence keeps all
+raw getters and pins; the API does not make these calls.
+
+The existing `savings.eliminations` row deducts the supported internal claims
+from gross Savings depositor liabilities. There is no additional asset to remove:
+Savings receipt shares are already excluded from allocation assets and measured
+cash in this reporting policy; the underlying investments/cash remain assets.
+Zero is published only with complete zero-share evidence. Missing reads or
+unsupported valuation leave the elimination TBD. Old pinned snapshots without
+this extension reproduce their former unknown elimination exactly.
+
+Independent historical reads found Spark ALM Ops Multisig
+`0x2e1b01adabb8d4981863394bea23a1263cbaedfc` held Ethereum spUSDC
+(`0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d`) at January–May 2026 closes:
+
+| Month | Internal claim, USD |
+|---|---:|
+| January | 1,138,408.001475 |
+| February | 1,141,838.301370 |
+| March | 1,145,479.550492 |
+| April | 647,905.163815 |
+| May | 649,876.261393 |
+| June–October | 0 |
+
+These are monthly **stocks**, not amounts to sum or settlement refunds.
+`tests/fixtures/spark_savings_control_january.json.gz` retains the January raw
+chain proof and scope. The adjustment affects only newly collected reporting
+B/S snapshots: no MSC settlement, income, cash flow, or margins are recalculated.
+A source backfill must be separately selected; the code change does not rewrite
+existing publications. Other payables and opening equity remain unresolved.

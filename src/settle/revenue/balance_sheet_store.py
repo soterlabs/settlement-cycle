@@ -85,6 +85,10 @@ def validate(document):
                 or abs(gross - sky - prime) > Decimal("1e-70")
             ):
                 raise ValueError("Stock ownership does not reconcile")
+    if "savings_control" in document:
+        from .balance_sheet_controls import validate as validate_control
+
+        validate_control(document["savings_control"], document)
     return document
 
 

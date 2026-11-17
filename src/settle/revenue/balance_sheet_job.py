@@ -19,7 +19,9 @@ def refresh(conn, cutoff, code, progress=None):
         "SELECT document->'closing_pins' FROM reporting_spark_components WHERE cutoff=%s ORDER BY publication_order DESC LIMIT 1",
         (cutoff,),
     ).fetchone()
-    document = collect(cutoff, candidates=row[0] if row else {}, progress=progress)
+    document = collect(
+        cutoff, candidates=row[0] if row else {}, progress=progress, include_savings_control=True
+    )
     revision = publish(conn, document, code)
     return revision, document
 

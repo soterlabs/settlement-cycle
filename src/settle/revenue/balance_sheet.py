@@ -135,6 +135,7 @@ def annual(year, as_of, inputs, *, selection=None):
         savings.extend((key, label) for key, _, _, _, _, label in EXTRA_SAVINGS)
     families = ["venues", "cash", "components"] + (["stocks"] if v2 else [])
     rows, layout, manifest, periods, chosen = {}, [], {}, [], []
+    has_savings_control = False
 
     def add(key, label, parent=None, kind=None, components=None):
         depth = next((r["depth"] + 1 for r in layout if r["id"] == parent), 0)
@@ -395,6 +396,24 @@ def annual(year, as_of, inputs, *, selection=None):
                 debt = document.get("sky_debt", {})
                 if debt.get("status") == "available":
                     rows["sky_debt"][month] = stock(debt["value"], ref=closing_ref)
+                if "savings_control" in document:
+                    has_savings_control = True
+                    from .balance_sheet_controls import validate as validate_control
+
+                    control = validate_control(document["savings_control"], document)
+                    rows["savings.eliminations"][month] = (
+                        {
+                            **stock(
+                                Decimal(control["value"]).copy_negate()
+                                if Decimal(control["value"])
+                                else "0",
+                                ref=closing_ref,
+                            ),
+                            "basis": control["basis"],
+                        }
+                        if control["status"] == "available"
+                        else stock(reason=control["reason"], ref=closing_ref)
+                    )
         comp = selected_rows["components"]
         if v2 and comp:
             treasury = comp.get("document", {}).get("treasury", {}).get("gains", {})
@@ -512,6 +531,11 @@ def annual(year, as_of, inputs, *, selection=None):
             sky_direct="Owned LP liquidity split at closing: only historically designated USDT legs belong to Sky; prime assets include the remaining legs. Uncollected fees are separately identified in the evidence.",
             closing_sources="Finalized chain snapshots with raw getter evidence and onchain ETH/USD oracle; no BA data is consumed. Stablecoins use the approved USD-par convention.",
             completeness="Known subtotals only. Offchain principal without claim evidence, opening equity, eliminations and payables remain TBD. No balancing plug.",
+        )
+    if has_savings_control:
+        result["methodology"].update(
+            savings="Gross closing vault claims less evidenced internally held claims, valued on the same closing USD basis. Missing controlled-holder coverage remains TBD.",
+            completeness="Known subtotals only. Offchain principal without claim evidence, opening equity and payables remain TBD; eliminations require complete controlled-holder evidence. No balancing plug.",
         )
     result["report_hash"] = digest(result)
     return result

@@ -248,7 +248,7 @@ class Reader:
         )
 
 
-def collect(cutoff, *, candidates=None, progress=None):
+def collect(cutoff, *, candidates=None, progress=None, include_savings_control=False):
     prime = load_prime_by_id("spark")
     cfg = cash_config()
     candidates = candidates or {}
@@ -680,5 +680,13 @@ def collect(cutoff, *, candidates=None, progress=None):
         reads=reader.reads,
         source_policy="Direct finalized chain state; approved par conventions; no BA data",
     )
+    if include_savings_control:
+        from .balance_sheet_controls import collect as collect_control
+
+        if progress:
+            progress("controlled_savings_shares")
+        doc["savings_control"] = collect_control(reader, savings, cfg, liabilities)
+        if doc["savings_control"]["status"] != "available":
+            errors["savings_control"] = doc["savings_control"]["reason"]
     doc["proof_hash"] = digest({k: v for k, v in doc.items() if k != "proof_hash"})
     return doc
