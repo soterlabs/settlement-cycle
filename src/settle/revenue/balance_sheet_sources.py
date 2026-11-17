@@ -681,8 +681,12 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
         source_policy="Direct finalized chain state; approved par conventions; no BA data",
     )
     if include_entity_controls:
+        from .balance_sheet_controls import (
+            OTHER_TOKENS,
+            other_controlled_eth,
+            other_controlled_token,
+        )
         from .balance_sheet_controls import collect as collect_control
-        from .balance_sheet_controls import other_controlled_eth
 
         extra["other_controlled_eth"] = attempt(
             "other_controlled_eth",
@@ -694,6 +698,17 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
             basis="reviewed_entity_wallets_excluding_ALMs_Ops_WETH_and_Savings_idle",
             configuration_revision=cfg["revision"],
         )
+        for symbol, (token, _, _, _) in OTHER_TOKENS.items():
+            extra["other_token." + symbol] = attempt(
+                "other_token." + symbol,
+                lambda symbol=symbol: other_controlled_token(reader, cfg, symbol),
+            )
+            extra["other_token." + symbol].update(
+                token=token,
+                chain="ethereum",
+                configuration_revision=cfg["revision"],
+                basis="reviewed_controlled_holdings_at_fresh_Chainlink_USD_mark",
+            )
         if progress:
             progress("controlled_savings_shares")
         doc["savings_control"] = collect_control(reader, savings, cfg, liabilities)

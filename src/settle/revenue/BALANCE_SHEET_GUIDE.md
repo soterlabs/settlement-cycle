@@ -172,3 +172,31 @@ contractor Safe. January–October checks found nonzero omitted balances at ever
 month-end. These are balance-sheet assets, not newly earned revenue. No MSC
 settlement is changed. Both this inventory and Savings consolidation run only
 in the closing publisher; daily margin sampling keeps its existing call scope.
+
+### Other reviewed treasury tokens
+
+The closing publisher includes canonical Ethereum LINK and EURC held in reviewed
+entity wallets, excluding Savings idle/intents custody and any token already in
+the measured cash perimeter. These are explicit contract identities, never a
+symbol-based discovery rule. The aggregate is labelled **Other treasury assets**
+when these inputs are present; EURC is a euro-denominated claim, not a USD-par
+stablecoin.
+
+| Asset | Token | USD mark | Maximum age |
+|---|---|---|---:|
+| LINK | `0x514910771af9ca656af840dff83e8264ecf986ca` | `0x2c1d072e956affc0d435cb7ac38ef18d24d9127c` | 3,600 seconds |
+| EURC | `0x1abaea1f7c830bd89acc67ec4af516284b1bc33c` | EUR/USD `0xb49f677943bc038e9857d61e7d053caa2c1734c1` | 86,400 seconds |
+
+Addresses and heartbeats were checked against Chainlink's official
+[reference directory](https://reference-data-directory.vercel.app/feeds-mainnet.json),
+which is used by its [documentation](https://github.com/smartcontractkit/documentation/blob/main/src/features/data/chains.ts).
+Token identities are documented by [Chainlink](https://docs.chain.link/resources/link-token-contracts)
+and [Circle](https://developers.circle.com/stablecoins/eurc-contract-addresses).
+Balances, decimals and oracle rounds are historical onchain reads at the same
+closing block. Invalid/stale marks remain unavailable; there is no price fallback.
+
+At October 31 this adds 308.696891100682853602 LINK ($3,589.848494485485) and
+128.05 EURC ($143.06578325). These assets are absent from the existing MORPHO,
+AVAX and reserve-token inventory. Other discovered tokens need verified
+identity, entitlement and valuation evidence before they are added; unsolicited
+tokens advertising stablecoin symbols are not priced at par.

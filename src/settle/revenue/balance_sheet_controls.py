@@ -206,3 +206,56 @@ def other_controlled_eth(reader, config, alm):
     with localcontext() as ctx:
         ctx.prec = 100
         return Decimal(units) / 10**18 * reader.price("ETH")
+
+
+# Chainlink's official directory used by its documentation:
+# https://github.com/smartcontractkit/documentation/blob/main/src/features/data/chains.ts
+# https://reference-data-directory.vercel.app/feeds-mainnet.json
+# EURC identity: https://developers.circle.com/stablecoins/eurc-contract-addresses
+# These are explicit reviewed assets, never identities inferred from symbols.
+OTHER_TOKENS = {
+    "LINK": (
+        "0x514910771af9ca656af840dff83e8264ecf986ca",
+        18,
+        "0x2c1d072e956affc0d435cb7ac38ef18d24d9127c",
+        3600,
+    ),
+    "EURC": (
+        "0x1abaea1f7c830bd89acc67ec4af516284b1bc33c",
+        6,
+        "0xb49f677943bc038e9857d61e7d053caa2c1734c1",
+        86400,
+    ),
+}
+
+
+def other_controlled_token(reader, config, symbol):
+    """Historical holdings times a fresh onchain USD mark; EURC is a EUR claim."""
+    from .cash_flow.classify import is_cash
+
+    token, decimals, feed, max_age = OTHER_TOKENS[symbol]
+    units = sum(
+        reader.balance("ethereum", token, owner)
+        for owner, meta in config["wallets"].get("ethereum", {}).items()
+        if meta["role"] not in {"savings_idle", "intents"}
+        and not is_cash(config, "ethereum", token, owner)
+    )
+    if not units:
+        return Decimal(0)
+    if reader.number("ethereum", token, "decimals()") != decimals:
+        raise ValueError("Reviewed token scale differs")
+    raw = reader.call("ethereum", feed, "latestRoundData()")
+    if not isinstance(raw, str) or not re.fullmatch(r"0x[0-9a-fA-F]{320}", raw):
+        raise ValueError("Invalid closing token oracle")
+    round_id, answer, _, updated, answered = [
+        int(raw[i : i + 64], 16) for i in range(2, len(raw), 64)
+    ]
+    if not 0 < answer < 2**255 or answered < round_id:
+        raise ValueError("Invalid closing token oracle round")
+    if not 0 <= reader.pins["ethereum"]["timestamp"] - updated <= max_age:
+        raise ValueError("Stale closing token oracle")
+    if reader.number("ethereum", feed, "decimals()") != 8:
+        raise ValueError("Reviewed oracle scale differs")
+    with localcontext() as ctx:
+        ctx.prec = 100
+        return Decimal(units) * answer / 10 ** (decimals + 8)

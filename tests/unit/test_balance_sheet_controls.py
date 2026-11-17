@@ -181,6 +181,12 @@ def test_retained_no_control_is_unchanged_and_new_control_resolves_only_savings(
     updated["extra_assets"]["other_controlled_eth"] = dict(
         status="available", quality="supported", value="17.25", read_indices=[]
     )
+    updated["extra_assets"]["other_token.LINK"] = dict(
+        status="available", quality="supported", value="2.5", read_indices=[]
+    )
+    updated["extra_assets"]["other_token.EURC"] = dict(
+        status="unavailable", value=None, reason="stale"
+    )
     updated["proof_hash"] = digest({k: v for k, v in updated.items() if k != "proof_hash"})
     validate(updated)
     newer = {
@@ -213,7 +219,7 @@ def test_retained_no_control_is_unchanged_and_new_control_resolves_only_savings(
         for key in ["nonstable", "total_assets"]:
             assert Decimal(rows[key]["known_value"] or rows[key]["value"] or "0") - Decimal(
                 old[key]["known_value"] or old[key]["value"] or "0"
-            ) == Decimal("17.25")
+            ) == Decimal("19.75")
     assert rows["total_equity"] == old["total_equity"]
 
 
@@ -315,3 +321,80 @@ def test_other_eth_missing_rpc_is_not_silently_zero():
         controls.other_controlled_eth(
             Reader(), {"wallets": {"ethereum": {OWNER: {"role": "wallet"}}}}, {}
         )
+
+
+@pytest.mark.parametrize(
+    "symbol,answer,units,expected",
+    [
+        ("LINK", 1162904000, 308696891100682853602, "3589.84849448548493185180208"),
+        ("EURC", 111726500, 128050000, "143.06578325"),
+    ],
+)
+def test_reviewed_tokens_use_historical_feed_and_correct_currency(symbol, answer, units, expected):
+    from decimal import Decimal
+
+    token, scale, feed, _ = controls.OTHER_TOKENS[symbol]
+
+    class Reader:
+        def __init__(self):
+            self.pins = {"ethereum": {"timestamp": 100000}}
+
+        def balance(self, ch, tok, owner):
+            assert tok == token and owner == OWNER
+            return units
+
+        def number(self, ch, address, signature):
+            assert signature == "decimals()"
+            return scale if address == token else 8
+
+        def call(self, ch, address, signature):
+            assert address == feed and signature == "latestRoundData()"
+            return "0x" + "".join(f"{n:064x}" for n in [12, answer, 99000, 99000, 12])
+
+    cfg = {
+        "wallets": {"ethereum": {OWNER: {"role": "wallet"}, VAULT: {"role": "savings_idle"}}},
+        "tokens": {"ethereum": {}},
+    }
+    assert controls.other_controlled_token(Reader(), cfg, symbol) == Decimal(expected)
+
+
+@pytest.mark.parametrize(
+    "fault", ["stale", "future", "negative", "unanswered", "scale", "malformed"]
+)
+def test_bad_other_token_marks_remain_unavailable(fault):
+    token, _, _, max_age = controls.OTHER_TOKENS["LINK"]
+
+    class Reader:
+        def __init__(self):
+            self.pins = {"ethereum": {"timestamp": 100000}}
+
+        def balance(self, *args):
+            return 10**18
+
+        def number(self, ch, address, signature):
+            return 18 if address == token else 9 if fault == "scale" else 8
+
+        def call(self, *args):
+            if fault == "malformed":
+                return "0x"
+            answer = 2**256 - 1 if fault == "negative" else 10**8
+            updated = (
+                100000 - max_age - 1 if fault == "stale" else 100001 if fault == "future" else 99000
+            )
+            return "0x" + "".join(
+                f"{n:064x}"
+                for n in [12, answer, updated, updated, 11 if fault == "unanswered" else 12]
+            )
+
+    cfg = {"wallets": {"ethereum": {OWNER: {"role": "wallet"}}}, "tokens": {"ethereum": {}}}
+    with pytest.raises(ValueError):
+        controls.other_controlled_token(Reader(), cfg, "LINK")
+
+
+def test_other_token_already_in_cash_is_not_counted_again():
+    token = controls.OTHER_TOKENS["LINK"][0]
+    cfg = {
+        "wallets": {"ethereum": {OWNER: {"role": "wallet"}}},
+        "tokens": {"ethereum": {token: {"cash": True}}},
+    }
+    assert controls.other_controlled_token(object(), cfg, "LINK") == 0

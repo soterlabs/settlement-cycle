@@ -457,6 +457,24 @@ def annual(year, as_of, inputs, *, selection=None):
                         else stock(reason="Other controlled-wallet ETH unavailable"),
                     )
                 )
+            for key in ["other_token.LINK", "other_token.EURC"]:
+                evidence = closing.get("extra_assets", {}).get(key)
+                if evidence is not None:
+                    next(r for r in layout if r["id"] == "nonstable")["label"] = (
+                        "Other treasury assets"
+                    )
+                    pieces.append(
+                        (
+                            key,
+                            1,
+                            stock(
+                                evidence["value"],
+                                ref="stocks:" + selected_rows["stocks"]["revision_id"],
+                            )
+                            if evidence["status"] == "available"
+                            else stock(reason="Other controlled token valuation unavailable"),
+                        )
+                    )
             rows["nonstable"][month] = combine(pieces)
         native = (comp or {}).get("document", {}).get("steakhouse", {})
         if native.get("status") == "available" and native.get("closing_value") is not None:
