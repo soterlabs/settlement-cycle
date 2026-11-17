@@ -99,6 +99,10 @@ def validate(document):
         from .balance_sheet_controls import validate as validate_control
 
         validate_control(document["savings_control"], document)
+    if "accounting" in document:
+        from .balance_sheet_accounting import validate as validate_accounting
+
+        validate_accounting(document)
     return document
 
 

@@ -138,77 +138,7 @@ def annual(year, as_of, inputs, *, selection=None):
     has_savings_control = False
     has_anchorage_principal = False
 
-    def add(key, label, parent=None, kind=None, components=None):
-        depth = next((r["depth"] + 1 for r in layout if r["id"] == parent), 0)
-        layout.append(
-            dict(
-                id=key,
-                label=label,
-                parent=parent,
-                depth=depth,
-                kind=kind,
-                components=components or [],
-            )
-        )
-        rows[key] = {}
-
-    add("assets", "Assets", kind="section")
-    add("cash", "Cash and cash equivalents", "assets")
-    add("allocations", "Allocation assets", "assets", "subtotal")
-    for group, label, members in groups:
-        key = "allocations." + group
-        add(key, label, "allocations", "subtotal")
-        for venue in members:
-            add("position." + venue, venue, key)
-        if group == "morpho":
-            add("position.steakhouse", "3F x Steakhouse USDC", key)
-    add("allocation_gaps", "Other allocation assets", "allocations")
-    if v2:
-        add("savings_idle", "Savings idle assets outside measured cash", "assets", "subtotal")
-        for key, _ in savings:
-            add("idle." + key, "Savings idle: " + key, "savings_idle")
-    add("nonstable", "Non-stable treasury assets", "assets")
-    add("msc_receivable", "MSC receivable from Sky", "assets")
-    add("reward_receivables", "Accrued issuer rewards", "assets", "subtotal")
-    for venue, label in REWARDS:
-        add("reward_receivable." + venue, label, "reward_receivables")
-    add("other_receivables", "Other receivables", "assets")
-    add("total_assets", "Total assets", kind="total")
-    add("liabilities", "Liabilities", kind="section")
-    add("sky_debt", "Debt to Sky", "liabilities")
-    add("savings", "Savings depositor liabilities", "liabilities", "subtotal")
-    for venue, label in savings:
-        add("savings." + venue, label, "savings")
-    add("savings.eliminations", "Controlled-holder share eliminations", "savings")
-    add("msc_payable", "MSC balance due to Sky", "liabilities")
-    add("reward_advances", "Prepaid issuer rewards", "liabilities", "subtotal")
-    for venue, label in REWARDS:
-        add("reward_advance." + venue, label, "reward_advances")
-    add("payables", "Accrued expenses and other liabilities", "liabilities")
-    add("total_liabilities", "Total liabilities", kind="total")
-    add("equity", "Equity", kind="section")
-    add("contributed_capital", "Contributed capital and reserves", "equity")
-    add("opening_earnings", "Opening retained earnings", "equity")
-    add("current_earnings", "Current-year net income", "equity")
-    add("total_equity", "Total equity", kind="total")
-    add("liabilities_equity", "Total liabilities and equity", kind="total")
-    for row in layout:
-        if row["kind"] == "subtotal":
-            row["components"] = [
-                {"id": r["id"], "sign": 1} for r in layout if r["parent"] == row["id"]
-            ]
-    for total_id, section in [
-        ("total_assets", "assets"),
-        ("total_liabilities", "liabilities"),
-        ("total_equity", "equity"),
-    ]:
-        next(r for r in layout if r["id"] == total_id)["components"] = [
-            {"id": r["id"], "sign": 1} for r in layout if r["parent"] == section
-        ]
-    next(r for r in layout if r["id"] == "liabilities_equity")["components"] = [
-        {"id": k, "sign": 1} for k in ["total_liabilities", "total_equity"]
-    ]
-    for m in range(1, 13):
+    def select_month(m):
         month = f"{year}-{m:02}"
         first, last = date(year, m, 1), date(year, m, calendar.monthrange(year, m)[1])
         expected = min(last, as_of) if first <= as_of else None
@@ -249,6 +179,96 @@ def annual(year, as_of, inputs, *, selection=None):
                 if cutoff
                 else None
             )
+        return month, last, expected, sources, selected
+
+    monthly_sources = [select_month(m) for m in range(1, 13)]
+    selected_stocks = {
+        selected.get("stocks") for _, _, _, _, selected in monthly_sources if selected
+    }
+    has_accounting = v2 and any(
+        "accounting" in r.get("document", {})
+        and r["cutoff"] <= str(as_of)
+        and r["revision_id"] in selected_stocks
+        for r in inputs.get("stocks", [])
+    )
+
+    def add(key, label, parent=None, kind=None, components=None):
+        depth = next((r["depth"] + 1 for r in layout if r["id"] == parent), 0)
+        layout.append(
+            dict(
+                id=key,
+                label=label,
+                parent=parent,
+                depth=depth,
+                kind=kind,
+                components=components or [],
+            )
+        )
+        rows[key] = {}
+
+    add("assets", "Assets", kind="section")
+    add("cash", "Cash and cash equivalents", "assets")
+    add("allocations", "Allocation assets", "assets", "subtotal")
+    for group, label, members in groups:
+        key = "allocations." + group
+        add(key, label, "allocations", "subtotal")
+        for venue in members:
+            add("position." + venue, venue, key)
+        if group == "morpho":
+            add("position.steakhouse", "3F x Steakhouse USDC", key)
+    add("allocation_gaps", "Other allocation assets", "allocations")
+    if v2:
+        add("savings_idle", "Savings idle assets outside measured cash", "assets", "subtotal")
+        for key, _ in savings:
+            add("idle." + key, "Savings idle: " + key, "savings_idle")
+    add("nonstable", "Non-stable treasury assets", "assets")
+    add("msc_receivable", "MSC receivable from Sky", "assets")
+    add("reward_receivables", "Accrued issuer rewards", "assets", "subtotal")
+    for venue, label in REWARDS:
+        add("reward_receivable." + venue, label, "reward_receivables")
+    add("other_receivables", "Other receivables", "assets")
+    if has_accounting:
+        add("investment.arkis_safe", "Arkis SAFE — provisional cost", "assets")
+    add("total_assets", "Total assets", kind="total")
+    add("liabilities", "Liabilities", kind="section")
+    add("sky_debt", "Debt to Sky", "liabilities")
+    add("savings", "Savings depositor liabilities", "liabilities", "subtotal")
+    for venue, label in savings:
+        add("savings." + venue, label, "savings")
+    add("savings.eliminations", "Controlled-holder share eliminations", "savings")
+    add("msc_payable", "MSC balance due to Sky", "liabilities")
+    add("reward_advances", "Prepaid issuer rewards", "liabilities", "subtotal")
+    for venue, label in REWARDS:
+        add("reward_advance." + venue, label, "reward_advances")
+    add("payables", "Accrued expenses and other liabilities", "liabilities")
+    add("total_liabilities", "Total liabilities", kind="total")
+    add("equity", "Equity", kind="section")
+    add("contributed_capital", "Contributed capital and reserves", "equity")
+    add("opening_earnings", "Opening retained earnings", "equity")
+    add("current_earnings", "Current-year net income", "equity")
+    add("total_equity", "Total equity", kind="total")
+    add("liabilities_equity", "Total liabilities and equity", kind="total")
+    if has_accounting:
+        add("sky_debt_memo", "Sky debt reconciliation", kind="section")
+        add("sky_debt_gross", "On-chain debt to Sky", "sky_debt_memo")
+        add("sky_debt_sde", "Less: Sky direct exposure", "sky_debt_memo")
+    for row in layout:
+        if row["kind"] == "subtotal":
+            row["components"] = [
+                {"id": r["id"], "sign": 1} for r in layout if r["parent"] == row["id"]
+            ]
+    for total_id, section in [
+        ("total_assets", "assets"),
+        ("total_liabilities", "liabilities"),
+        ("total_equity", "equity"),
+    ]:
+        next(r for r in layout if r["id"] == total_id)["components"] = [
+            {"id": r["id"], "sign": 1} for r in layout if r["parent"] == section
+        ]
+    next(r for r in layout if r["id"] == "liabilities_equity")["components"] = [
+        {"id": k, "sign": 1} for k in ["total_liabilities", "total_equity"]
+    ]
+    for month, last, expected, sources, selected in monthly_sources:
         if selected and (
             not expected
             or selected["cutoff"] > str(expected)
@@ -416,6 +436,20 @@ def annual(year, as_of, inputs, *, selection=None):
                         if control["status"] == "available"
                         else stock(reason=control["reason"], ref=closing_ref)
                     )
+        if v2 and closing and "accounting" in document:
+            from .balance_sheet_accounting import project
+
+            projected = project(document)
+            for key, evidence in projected.items():
+                rows[key][month] = (
+                    stock(
+                        evidence["value"],
+                        ref=closing_ref,
+                        quality=evidence.get("quality", "supported"),
+                    )
+                    if evidence["status"] == "available"
+                    else stock(reason=evidence["reason"], ref=closing_ref)
+                )
         comp = selected_rows["components"]
         if v2 and comp:
             treasury = comp.get("document", {}).get("treasury", {}).get("gains", {})
@@ -565,6 +599,11 @@ def annual(year, as_of, inputs, *, selection=None):
             sky_direct="Owned LP liquidity split at closing: only historically designated USDT legs belong to Sky; prime assets include the remaining legs. Uncollected fees are separately identified in the evidence.",
             closing_sources="Finalized chain snapshots with raw getter evidence and onchain ETH/USD oracle; no BA data is consumed. Stablecoins use the approved USD-par convention.",
             completeness="Known subtotals only. Offchain principal without claim evidence, opening equity, eliminations and payables remain TBD. No balancing plug.",
+        )
+    if has_accounting:
+        result["methodology"].update(
+            sky_direct="Historical Atlas-designated legs are excluded from assets and deducted once from gross debt; uncollected LP fees are split by closing principal value. Missing SDE evidence makes net debt unavailable.",
+            investments="Arkis SAFE at provisional $4m cost, supported by payment evidence; legal entitlement and impairment await confirmation.",
         )
     if has_savings_control:
         result["methodology"].update(

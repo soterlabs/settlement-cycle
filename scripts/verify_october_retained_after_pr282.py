@@ -109,13 +109,15 @@ def replay(wallet_inputs=None):
     reporting_sources.update({
         'src/settle/revenue/spark_anchorage_principal.v1.json': 'e582bba1d7e43848b417c40d0b85737b77b67ae9b08d760c89e64965d21ff6ef',
         'src/settle/revenue/anchorage_principal.py': 'b460138b9bc24f33bf54dea6c9418e0b1f530811d2afd21c22fa36d18a62fb37',
-        'src/settle/revenue/balance_sheet.py': '67fac77f745ddd98480c92858a0ce2afbbdcc97c4e8a2470783a99fefb8de306',
-        'src/settle/revenue/balance_sheet_sources.py': '38c13caa9e4c9adc5356883608cf94e170af9feacf3b1fae36e9e35f173a1587',
+        'src/settle/revenue/balance_sheet.py': '38490f3b23d1eb99f5f2613af9339bdb0aa567248464e7f2551190b1a235bb88',
+        'src/settle/revenue/balance_sheet_sources.py': '293f39ffce5f7507bb7189260f4b4798447ddcb85ee33834750e3b4bbd45e79c',
         'src/settle/revenue/balance_sheet_controls.py': 'c65b11e7563d0eb769e345d8a144004d813d2552c7b57340d696074429591c7f',
         'src/settle/revenue/balance_sheet_job.py': 'e25396e9ca2da46811aa04920da1b99fea91d9a6addd2ea44457d5d4f114fda6',
-        'src/settle/revenue/balance_sheet_store.py': '10cfb0303ec03794048462786e45e7576dd21b59f3d10183f11cb0d3971643bc',
+        'src/settle/revenue/balance_sheet_store.py': 'efc1e354f0a463cbe7b83de0a20d550f807c34c34b91518beee45cd6768c8a36',
         'src/settle/revenue/BALANCE_SHEET_GUIDE.md': 'faeb167ff5005593d4a30c79f641b7803a9d393827a6ff21b8f3d699863e31e1',
     })
+    # Closing accounting only; no MSC formula dependency.
+    reporting_sources['src/settle/revenue/balance_sheet_accounting.py'] = '44edb22e931f7c4ab1e35df1fd2ff5e77a77d0031f0bad1b2fb1df6d823dfe65'
     for path, sha in reporting_sources.items():
         if path in changed:
             check(digest(ROOT / path) == sha, 'Unreviewed reporting source change: ' + path)
