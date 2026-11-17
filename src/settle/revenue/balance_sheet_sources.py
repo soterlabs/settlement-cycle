@@ -468,6 +468,7 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
         owner = (v.holder_override or prime.alm[v.chain]).hex
         legs = []
         pending_usdt = D(0)
+        pending_total = D(0)
         if v.lp_kind == "uniswap_v4":
             from ..normalize.positions import _venue_v4_pool_key
             from ..normalize.sources.uniswap_v4 import RPCUniswapV4PositionSource
@@ -498,6 +499,10 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
                             "0x6c3ea9036406852006290770bedfcaba0e23a0e8",
                         }
                         else 18
+                    )
+                    pending_total += (
+                        D(fees[0 if token.lower() == pos.currency0.hex.lower() else 1])
+                        / 10**decimals
                     )
                     if token.lower() == "0xdac17f958d2ee523a2206206994597c13d831ec7":
                         pending_usdt += (
@@ -551,9 +556,13 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
             if window and window[0] <= cutoff <= window[1]
             else D(0)
         )
-        # Fee income belongs to Spark, including fees denominated in USDT.
+        # Closing fee claims follow the underlying principal ownership.
+        fee_allocation = None
         if window and window[0] <= cutoff <= window[1]:
-            sky -= pending_usdt
+            from .balance_sheet_accounting import fee_share
+
+            fee_allocation = fee_share(gross, sky - pending_usdt, pending_total)
+            sky = D(fee_allocation["sky_value"])
         ownership[v.id] = dict(
             gross_value=str(gross),
             sky_value=str(sky),
@@ -563,7 +572,8 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
             uncollected_fees="included_from_fee_growth_checkpoints"
             if v.lp_kind == "uniswap_v4"
             else "embedded_in_pool_reserves",
-            prime_usdt_fee_claim=str(pending_usdt),
+            fee_allocation=fee_allocation,
+            uncollected_fee_value=str(pending_total),
         )
         return gross - sky
 
@@ -725,6 +735,13 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
         doc["savings_control"] = collect_control(reader, savings, cfg, liabilities)
         if doc["savings_control"]["status"] != "available":
             errors["savings_control"] = doc["savings_control"]["reason"]
+        from .balance_sheet_accounting import collect as collect_accounting
+
+        doc["accounting"] = collect_accounting(reader, prime, doc, cutoff)
+        for family in ("sde", "investments"):
+            for key, value in doc["accounting"][family].items():
+                if value["status"] != "available":
+                    errors["accounting." + key] = value.get("reason", "Missing accounting evidence")
     if anchorage_proof and positions["S23"]["status"] == "available":
         doc["anchorage_principal"] = anchorage_proof
     doc["proof_hash"] = digest({k: v for k, v in doc.items() if k != "proof_hash"})
