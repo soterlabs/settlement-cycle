@@ -1,0 +1,246 @@
+{
+  "version": "spark-anchorage-principal-v1",
+  "reviewed_through_block": 26423854,
+  "assumptions": [
+    "Operator approved 2026-08-17 receipt 51,267,944 = 50,000,000 principal + 1,267,944 interest (17 November 2026).",
+    "July 10,036,438 OTC return = funded 10,000,000 principal + 36,438 interest; September 10,000,000 repayment is a separate transfer.",
+    "Other reviewed loan-wallet returns are interest; no impairment or accrued-interest receivable inferred.",
+    "Separate April third-party payments are not loan advances; their accounting remains unresolved."
+  ],
+  "events": [
+    {
+      "block": 24041973,
+      "log_index": 926,
+      "tx_hash": "0xcd63afde4089929cae930e520a77c87706c2a990a1cf6485f7a30bf5196071e4",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "units": "1000000",
+      "principal_units": "1000000"
+    },
+    {
+      "block": 24047618,
+      "log_index": 191,
+      "tx_hash": "0x93ca98a9274c825c8660b9df27dce412c94b902bcb89b68942ec1c4ee817f19b",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "units": "49999999000000",
+      "principal_units": "49999999000000"
+    },
+    {
+      "block": 24048512,
+      "log_index": 123,
+      "tx_hash": "0x6a34511c4c06ea77d41b400d4170ebc034d5fb08b571e3ce57d3a923dd4a7d57",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "units": "50000000000000",
+      "principal_units": "50000000000000"
+    },
+    {
+      "block": 24049504,
+      "log_index": 457,
+      "tx_hash": "0x10efe0ad2cb00af313e99d8dd045285f1afefaa39cf58ada2896a301e9d701c5",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "units": "50000000000000",
+      "principal_units": "50000000000000"
+    },
+    {
+      "block": 24285004,
+      "log_index": 748,
+      "tx_hash": "0xdfe5f234f2f04cb51b53c70f62142155aebabeaaadc160df11f0a4a087992078",
+      "sender": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "891780000000",
+      "principal_units": "0"
+    },
+    {
+      "block": 24520354,
+      "log_index": 666,
+      "tx_hash": "0x85344ca45484f830f1f5bbb6bad3ce1209569a8f2d056266acc733268bd02103",
+      "sender": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "891780000000",
+      "principal_units": "0"
+    },
+    {
+      "block": 24721251,
+      "log_index": 1203,
+      "tx_hash": "0x09786dd6a8622e99f33bd3710edf380f67deaeba923511c6326aa1379199a39d",
+      "sender": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "805479000000",
+      "principal_units": "0"
+    },
+    {
+      "block": 25020384,
+      "log_index": 696,
+      "tx_hash": "0xd5a9c10b6be6f5a206ae2973ac8c33ae93cd43ee95a0adb196d616283d4a3734",
+      "sender": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "891780000000",
+      "principal_units": "0"
+    },
+    {
+      "block": 25089071,
+      "log_index": 128,
+      "tx_hash": "0x27ed9d47b465ccc4279b8caff27d681b684fc57f3a7b82a400a7b0e56fc47923",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "units": "50000000000000",
+      "principal_units": "50000000000000"
+    },
+    {
+      "block": 25148380,
+      "log_index": 411,
+      "tx_hash": "0x7e7e657f6d0158c79e9fe46101ae0fe515987477ebdbbc366d2ee5f09df0d6ff",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "units": "49999998000000",
+      "principal_units": "49999998000000"
+    },
+    {
+      "block": 25182718,
+      "log_index": 427,
+      "tx_hash": "0xe0226ac7a6dae4c6bd8460e47f52ee8c7539c59a7e4f00b33cc3abce42a4e35b",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "units": "2000000",
+      "principal_units": "2000000"
+    },
+    {
+      "block": 25238361,
+      "log_index": 743,
+      "tx_hash": "0xf9b3c6fae737ba3a0695365e5eafcbc03c8152142e66efb59a2c0a63403873fc",
+      "sender": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "1435956000000",
+      "principal_units": "0"
+    },
+    {
+      "block": 25338970,
+      "log_index": 1401,
+      "tx_hash": "0x7695a571ba24b46c1b8ca9074a508b98666031a4bacfc21c51ff7452c86a6861",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8bcd4b0a1ad17521aa12057cabd40c1b32d23181",
+      "units": "10000000",
+      "principal_units": "10000000"
+    },
+    {
+      "block": 25340587,
+      "log_index": 829,
+      "tx_hash": "0xf698e2848e94a885c2dfacf10f3a9fe96e8d281bca16eede80ab9cc4214fe643",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8bcd4b0a1ad17521aa12057cabd40c1b32d23181",
+      "units": "9999990000000",
+      "principal_units": "9999990000000"
+    },
+    {
+      "block": 25504473,
+      "log_index": 458,
+      "tx_hash": "0x0eaf421c395272bba1de8de240486fbc7855575368078ae97bfe596f50db0292",
+      "sender": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "1198969000000",
+      "principal_units": "0"
+    },
+    {
+      "block": 25545324,
+      "log_index": 863,
+      "tx_hash": "0x1c22d899c093128d0002e35ff6a3a6d099ccf830470ef657507f35b5d5a01b4e",
+      "sender": "0x8bcd4b0a1ad17521aa12057cabd40c1b32d23181",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "10036438000000",
+      "principal_units": "10000000000000"
+    },
+    {
+      "block": 25581586,
+      "log_index": 231,
+      "tx_hash": "0x0229844277e9bff8661efde97a26e799ab63b211e9420dce7ea05aeb846bb089",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8bcd4b0a1ad17521aa12057cabd40c1b32d23181",
+      "units": "10000000000000",
+      "principal_units": "10000000000000"
+    },
+    {
+      "block": 25776099,
+      "log_index": 478,
+      "tx_hash": "0x3f9d9db712d79b632e4e4f5e7ea2e4386335efa20060b5c1f3fa2584314bfb08",
+      "sender": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "51267944000000",
+      "principal_units": "50000000000000"
+    },
+    {
+      "block": 25821943,
+      "log_index": 560,
+      "tx_hash": "0x3845c6d8493a85250ad065ad95163ccec72ed5ccc69ff21a7cc5b16c1be7059d",
+      "sender": "0x8bcd4b0a1ad17521aa12057cabd40c1b32d23181",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "36438000000",
+      "principal_units": "0"
+    },
+    {
+      "block": 25832783,
+      "log_index": 446,
+      "tx_hash": "0xb5e3c53eb37b891776582ba99c5a1461f42e51ca266de4acb56224f254735d11",
+      "sender": "0x8bcd4b0a1ad17521aa12057cabd40c1b32d23181",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "3698000000",
+      "principal_units": "0"
+    },
+    {
+      "block": 25885561,
+      "log_index": 776,
+      "tx_hash": "0x2270b5985498d7e210a8d5c320480adb67b3830e6e2a03b3ed955732aa7dfb00",
+      "sender": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "recipient": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "units": "10000000000000",
+      "principal_units": "10000000000000"
+    },
+    {
+      "block": 25953938,
+      "log_index": 1336,
+      "tx_hash": "0xbedf1256d84d57d80ddb4bc2d41122c9eb6bfa8e0ff496074c354b64cea45df3",
+      "sender": "0x8bcd4b0a1ad17521aa12057cabd40c1b32d23181",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "24410000000",
+      "principal_units": "0"
+    },
+    {
+      "block": 25954202,
+      "log_index": 1645,
+      "tx_hash": "0xd290228201f8ed52545fd88364618ace686323b40ef4847e06aabd8cee9c2a3c",
+      "sender": "0x8bcd4b0a1ad17521aa12057cabd40c1b32d23181",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "10000000000000",
+      "principal_units": "10000000000000"
+    },
+    {
+      "block": 25984403,
+      "log_index": 1070,
+      "tx_hash": "0x0c6aba4642ad591f16712173972a5bfe6c5dafa5d5bda592289bc9fccd4b0c92",
+      "sender": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "959725000000",
+      "principal_units": "0"
+    },
+    {
+      "block": 26186175,
+      "log_index": 187,
+      "tx_hash": "0xfa1e72198df22b89df3223e87a7b094ce396d5a8589e8f08b5452db67175e635",
+      "sender": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "10000913",
+      "principal_units": "0"
+    },
+    {
+      "block": 26186825,
+      "log_index": 320,
+      "tx_hash": "0xa6f72c9be2a246f9a5736cd0f1f6c693182dd5e005b1a72897350094d0e9933d",
+      "sender": "0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3",
+      "recipient": "0x49506c3aa028693458d6ee816b2ec28522946872",
+      "units": "967796999087",
+      "principal_units": "0"
+    }
+  ]
+}

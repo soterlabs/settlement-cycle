@@ -200,3 +200,39 @@ At October 31 this adds 308.696891100682853602 LINK ($3,589.848494485485) and
 AVAX and reserve-token inventory. Other discovered tokens need verified
 identity, entitlement and valuation evidence before they are added; unsolicited
 tokens advertising stablecoin symbols are not priced at par.
+
+### Anchorage loan principal (reporting only)
+
+S23 uses reviewed USDC transfers between the configured escrow
+`0x49506c3aa028693458d6ee816b2ec28522946872` and the main/OTC loan wallets
+`0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3` /
+`0x8bcd4b0a1ad17521aa12057cabd40c1b32d23181`. The immutable v1 transfer policy
+is `spark_anchorage_principal.v1.json`; raw positive transfers must match it
+exactly through the pinned closing block. Unknown transfers, changed amounts
+or missing history leave S23 unavailable. Zero-value poisoning logs are ignored.
+
+**Approved assumption (17 November 2026):** the 17 August receipt of 51,267,944
+USDC comprises **50,000,000 principal + 1,267,944 interest**:
+[escrow receipt](https://etherscan.io/tx/0x3f9d9db712d79b632e4e4f5e7ea2e4386335efa20060b5c1f3fa2584314bfb08).
+July's OTC repayment is interpreted as the funded 10M principal plus 36,438
+interest. September's OTC 10M repayment and interest are separate transfers.
+Other reviewed loan-wallet receipts are classified as interest. These are
+explicit accounting interpretations, not fields encoded by ERC-20 transfers.
+
+Month-end loan principal is 150M January–April, 250M May, 260M June–July,
+and **210M August–October** (also November 15). September moves the remaining
+10M OTC exposure to the main route; it does not add another 10M overall.
+S23 is marked **estimate**, with the reviewed policy and events retained in the
+closing evidence. No unmeasured interest receivable or impairment is inferred.
+
+ALM→escrow funding alone overstates the loan: duplicate advances/refunds and
+133,499.72 of separate April payments are not advances to these loan wallets.
+The separate payments' expense/other-claim classification remains unresolved;
+this change neither expenses them nor invents another receivable. Excess escrow
+funding returned alongside interest is also excluded from loan principal.
+Escrow cash and other assets are not included in this loan row.
+
+This logic runs in the closing reporting publisher only. It does not modify
+MSC cash-receipt classifications, settlement reports, current-year earnings,
+or already selected historical reporting revisions. A source refresh and new
+reporting publication are required to expose the new calculation in the API.

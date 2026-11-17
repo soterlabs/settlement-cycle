@@ -278,6 +278,7 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
     extra = {}
     ownership = {}
     async_claims = {}
+    anchorage_proof = {}
 
     def attempt(key, fn):
         if progress:
@@ -320,7 +321,15 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
         if v.lp_kind in {"uniswap_v4", "curve_stableswap"}:
             return amm(v)
         if v.id == "S23":
-            raise ValueError("Offchain claim needs principal reconciliation")
+            if not include_entity_controls:
+                raise ValueError("Offchain claim requires reviewed closing reconciliation")
+            from .anchorage_principal import ESCROW, TOKEN
+            from .anchorage_principal import collect as collect_anchorage
+
+            if ch != "ethereum" or token != TOKEN or owner != ESCROW:
+                raise ValueError("Anchorage configuration changed")
+            anchorage_proof.update(collect_anchorage(pins[ch]["block"]))
+            return D(anchorage_proof["value"])
         from ..normalize.async_vaults import async_vault_exposure
 
         closing_venue = v
@@ -565,6 +574,8 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
         target = liabilities if str(v.pricing_category) == "S2" else positions
         target[key] = attempt(key, lambda v=v: venue_value(v))
         target[key].update(label=v.label, chain=str(v.chain), token=v.token.address.hex)
+        if key == "S23" and target[key]["status"] == "available":
+            target[key].update(quality="estimate", basis=anchorage_proof["basis"])
     # Savings-funded WETH supply is an asset distinct from the depositor claim.
     positions["sparklend_weth"] = attempt(
         "sparklend_weth",
@@ -714,5 +725,7 @@ def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=F
         doc["savings_control"] = collect_control(reader, savings, cfg, liabilities)
         if doc["savings_control"]["status"] != "available":
             errors["savings_control"] = doc["savings_control"]["reason"]
+    if anchorage_proof and positions["S23"]["status"] == "available":
+        doc["anchorage_principal"] = anchorage_proof
     doc["proof_hash"] = digest({k: v for k, v in doc.items() if k != "proof_hash"})
     return doc

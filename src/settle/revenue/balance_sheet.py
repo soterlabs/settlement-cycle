@@ -136,6 +136,7 @@ def annual(year, as_of, inputs, *, selection=None):
     families = ["venues", "cash", "components"] + (["stocks"] if v2 else [])
     rows, layout, manifest, periods, chosen = {}, [], {}, [], []
     has_savings_control = False
+    has_anchorage_principal = False
 
     def add(key, label, parent=None, kind=None, components=None):
         depth = next((r["depth"] + 1 for r in layout if r["id"] == parent), 0)
@@ -357,6 +358,7 @@ def annual(year, as_of, inputs, *, selection=None):
         if v2:
             closing = selected_rows["stocks"]
             document = (closing or {}).get("document", {})
+            has_anchorage_principal |= "anchorage_principal" in document
             closing_ref = "stocks:" + closing["revision_id"] if closing else None
 
             def closing_cell(key, family, document=document, closing_ref=closing_ref):
@@ -568,6 +570,14 @@ def annual(year, as_of, inputs, *, selection=None):
         result["methodology"].update(
             savings="Gross closing vault claims less evidenced internally held claims, valued on the same closing USD basis. Missing controlled-holder coverage remains TBD.",
             completeness="Known subtotals only. Offchain principal without claim evidence, opening equity and payables remain TBD; eliminations require complete controlled-holder evidence. No balancing plug.",
+        )
+    if has_anchorage_principal:
+        result["methodology"]["anchorage"] = (
+            "Estimated loan principal from reviewed escrow/loan-wallet transfers. "
+            "August 17 receipt assumes 50M principal and 1,267,944 interest (operator approved); "
+            "July OTC return assumes 10M principal and 36,438 interest. "
+            "Excludes escrow cash, unrelated payments and unmeasured accrued interest. "
+            "New unreviewed loan-route transfers keep the position unavailable; MSC is unchanged."
         )
     result["report_hash"] = digest(result)
     return result
