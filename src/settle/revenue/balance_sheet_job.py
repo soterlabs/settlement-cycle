@@ -20,7 +20,7 @@ def refresh(conn, cutoff, code, progress=None):
         (cutoff,),
     ).fetchone()
     document = collect(
-        cutoff, candidates=row[0] if row else {}, progress=progress, include_savings_control=True
+        cutoff, candidates=row[0] if row else {}, progress=progress, include_entity_controls=True
     )
     revision = publish(conn, document, code)
     return revision, document

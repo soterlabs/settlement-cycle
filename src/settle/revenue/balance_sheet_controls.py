@@ -183,3 +183,26 @@ def claim_value(units, total_assets, liability):
     with localcontext() as ctx:
         ctx.prec = 100
         return str(gross * Decimal(units) / Decimal(total_assets))
+
+
+def other_controlled_eth(reader, config, alm):
+    """Closing native/wrapped ETH outside existing ALM and Ops inventories.
+
+    Savings idle underlying is captured separately. Intents custody is not an
+    unconditional entity asset. Ops WETH already belongs to reserve_nonstable;
+    Ops native ETH does not. Restrict native reads to ETH-native chains.
+    """
+    from .spark_onchain import WETH
+    from .spark_treasury import OPS
+
+    units = 0
+    for chain, token in WETH.items():
+        for owner, meta in config["wallets"].get(chain, {}).items():
+            if meta["role"] in {"savings_idle", "intents"} or owner == alm.get(chain):
+                continue
+            units += reader.native(chain, owner)
+            if (chain, owner) != ("ethereum", OPS):
+                units += reader.balance(chain, token, owner)
+    with localcontext() as ctx:
+        ctx.prec = 100
+        return Decimal(units) / 10**18 * reader.price("ETH")

@@ -131,7 +131,14 @@ def test_retained_no_control_is_unchanged_and_new_control_resolves_only_savings(
         document_hash=digest(doc),
         document=doc,
     )
-    inputs = dict(venues=[], cash=[], components=[], stocks=[record])
+    inputs = dict(
+        venues=[],
+        cash=[],
+        components=[
+            {**record, "revision_id": "c" * 64, "document": {}, "document_hash": digest({})}
+        ],
+        stocks=[record],
+    )
     before = annual(2026, date(2026, 10, 31), inputs)
     pinned = decode(before["selection"], "spark", 2026)
     assert (
@@ -171,6 +178,9 @@ def test_retained_no_control_is_unchanged_and_new_control_resolves_only_savings(
     updated = deepcopy(doc)
     updated["reads"].extend(reader.reads)
     updated["savings_control"] = control
+    updated["extra_assets"]["other_controlled_eth"] = dict(
+        status="available", quality="supported", value="17.25", read_indices=[]
+    )
     updated["proof_hash"] = digest({k: v for k, v in updated.items() if k != "proof_hash"})
     validate(updated)
     newer = {
@@ -198,9 +208,12 @@ def test_retained_no_control_is_unchanged_and_new_control_resolves_only_savings(
         assert Decimal(rows["savings.eliminations"]["value"]) == -elimination
         assert (elimination > 0) == bool(internal_shares)
     assert rows["total_liabilities"]["status"] == "partial"  # payables still unknown
-    assert {k: v for k, v in rows["total_assets"].items() if k != "source_refs"} == {
-        k: v for k, v in old["total_assets"].items() if k != "source_refs"
-    }
+    with localcontext() as ctx:
+        ctx.prec = 100
+        for key in ["nonstable", "total_assets"]:
+            assert Decimal(rows[key]["known_value"] or rows[key]["value"] or "0") - Decimal(
+                old[key]["known_value"] or old[key]["value"] or "0"
+            ) == Decimal("17.25")
     assert rows["total_equity"] == old["total_equity"]
 
 
@@ -251,3 +264,54 @@ def test_saved_january_chain_claim_is_eliminated_not_escrow_cash():
         assert row["venue"] not in asset_venues
         if row["owner"] in cfg["wallets"][row["chain"]]:
             assert not is_cash(cfg, row["chain"], row["vault"], row["owner"])
+
+
+def test_other_eth_excludes_existing_inventories_and_uses_exact_units():
+    from decimal import Decimal
+
+    from settle.revenue.spark_treasury import OPS
+
+    calls = []
+
+    class Reader:
+        def native(self, ch, owner):
+            calls.append((ch, owner, "native"))
+            return 10**18
+
+        def balance(self, ch, token, owner):
+            calls.append((ch, owner, "wrapped"))
+            return 2 * 10**18
+
+        def price(self, symbol):
+            assert symbol == "ETH"
+            return Decimal("2500")
+
+    cfg = {
+        "wallets": {
+            "ethereum": {
+                OWNER: {"role": "wallet"},
+                VAULT: {"role": "savings_idle"},
+                OPS: {"role": "wallet"},
+                "alm": {"role": "wallet"},
+                "intents": {"role": "intents"},
+            },
+            "avalanche_c": {OWNER: {"role": "wallet"}},
+        }
+    }
+    assert controls.other_controlled_eth(Reader(), cfg, {"ethereum": "alm"}) == 10000
+    assert calls == [
+        ("ethereum", OWNER, "native"),
+        ("ethereum", OWNER, "wrapped"),
+        ("ethereum", OPS, "native"),
+    ]
+
+
+def test_other_eth_missing_rpc_is_not_silently_zero():
+    class Reader:
+        def native(self, *args):
+            raise ValueError("Unavailable historical balance")
+
+    with pytest.raises(ValueError, match="Unavailable"):
+        controls.other_controlled_eth(
+            Reader(), {"wallets": {"ethereum": {OWNER: {"role": "wallet"}}}}, {}
+        )

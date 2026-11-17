@@ -105,6 +105,15 @@ def replay(wallet_inputs=None):
         'src/settle/revenue/margin_balances.py': '2f751a909f1ef820e498516d4d335cf28c4726399f1b1f24e95767a5ada1771c',
         'src/settle/revenue/margin_balance_job.py': '3d860f42419379752786c23e75fac88558bc3f570fd7186b91b7cff9cbfd6c2f',
     }
+    # PR288 adds closing-only entity inventory/consolidation; no MSC inputs change.
+    reporting_sources.update({
+        'src/settle/revenue/balance_sheet.py': 'dc33f4f208ba617ec78f5c313232e9fa517d81a3143b9113dbe6709ba36a9f66',
+        'src/settle/revenue/balance_sheet_sources.py': 'd283d64ea5395662b5220b7250b515a98007c40c999a63789f2916577ad3b7a6',
+        'src/settle/revenue/balance_sheet_controls.py': '013a47e4ce4b6fd46217efe87f42659a51e3f18deafaf5609c55c12e0cd10e01',
+        'src/settle/revenue/balance_sheet_job.py': 'e25396e9ca2da46811aa04920da1b99fea91d9a6addd2ea44457d5d4f114fda6',
+        'src/settle/revenue/balance_sheet_store.py': 'f5a30ca988da75273016c27ce35a49d28d1da42faa7a04480c516b2871e9c14b',
+        'src/settle/revenue/BALANCE_SHEET_GUIDE.md': '22ce3d60900829c27f98c5be30c97b49c33b7892146ad8f67dc54f705680693f',
+    })
     for path, sha in reporting_sources.items():
         if path in changed:
             check(digest(ROOT / path) == sha, 'Unreviewed reporting source change: ' + path)

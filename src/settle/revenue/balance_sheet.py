@@ -443,6 +443,20 @@ def annual(year, as_of, inputs, *, selection=None):
                     else stock(reason="ALM ETH closing stock unavailable"),
                 )
             )
+            other_eth = closing.get("extra_assets", {}).get("other_controlled_eth")
+            if other_eth is not None:
+                pieces.append(
+                    (
+                        "other_controlled_eth",
+                        1,
+                        stock(
+                            other_eth["value"],
+                            ref="stocks:" + selected_rows["stocks"]["revision_id"],
+                        )
+                        if other_eth["status"] == "available"
+                        else stock(reason="Other controlled-wallet ETH unavailable"),
+                    )
+                )
             rows["nonstable"][month] = combine(pieces)
         native = (comp or {}).get("document", {}).get("steakhouse", {})
         if native.get("status") == "available" and native.get("closing_value") is not None:

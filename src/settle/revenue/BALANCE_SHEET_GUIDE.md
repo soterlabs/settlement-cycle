@@ -157,3 +157,18 @@ chain proof and scope. The adjustment affects only newly collected reporting
 B/S snapshots: no MSC settlement, income, cash flow, or margins are recalculated.
 A source backfill must be separately selected; the code change does not rewrite
 existing publications. Other payables and opening equity remain unresolved.
+
+### Other controlled-wallet ETH
+
+Closing snapshots also add native/wrapped ETH held by reviewed entity wallets
+outside the existing ALM inventory. Exclude Savings idle and intents custody;
+exclude each primary ALM's native/WETH (already in `alm_eth`) and Ethereum Ops
+WETH (already in the reserve-token inventory). Ops native ETH remains eligible.
+Use the pinned Ethereum ETH/USD oracle for the additional disjoint stock.
+
+October 31 chain checks found 33.279422951849623186 additional ETH/WETH,
+worth $74,900.99885503939141603462. Most belongs to the DevCo and its reviewed
+contractor Safe. January–October checks found nonzero omitted balances at every
+month-end. These are balance-sheet assets, not newly earned revenue. No MSC
+settlement is changed. Both this inventory and Savings consolidation run only
+in the closing publisher; daily margin sampling keeps its existing call scope.

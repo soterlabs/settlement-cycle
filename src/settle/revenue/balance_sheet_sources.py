@@ -248,7 +248,7 @@ class Reader:
         )
 
 
-def collect(cutoff, *, candidates=None, progress=None, include_savings_control=False):
+def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=False):
     prime = load_prime_by_id("spark")
     cfg = cash_config()
     candidates = candidates or {}
@@ -680,9 +680,20 @@ def collect(cutoff, *, candidates=None, progress=None, include_savings_control=F
         reads=reader.reads,
         source_policy="Direct finalized chain state; approved par conventions; no BA data",
     )
-    if include_savings_control:
+    if include_entity_controls:
         from .balance_sheet_controls import collect as collect_control
+        from .balance_sheet_controls import other_controlled_eth
 
+        extra["other_controlled_eth"] = attempt(
+            "other_controlled_eth",
+            lambda: other_controlled_eth(
+                reader, cfg, {str(ch): a.hex.lower() for ch, a in prime.alm.items()}
+            ),
+        )
+        extra["other_controlled_eth"].update(
+            basis="reviewed_entity_wallets_excluding_ALMs_Ops_WETH_and_Savings_idle",
+            configuration_revision=cfg["revision"],
+        )
         if progress:
             progress("controlled_savings_shares")
         doc["savings_control"] = collect_control(reader, savings, cfg, liabilities)
