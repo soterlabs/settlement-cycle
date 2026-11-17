@@ -248,7 +248,7 @@ class Reader:
         )
 
 
-def collect(cutoff, *, candidates=None, progress=None):
+def collect(cutoff, *, candidates=None, progress=None, include_entity_controls=False):
     prime = load_prime_by_id("spark")
     cfg = cash_config()
     candidates = candidates or {}
@@ -278,6 +278,7 @@ def collect(cutoff, *, candidates=None, progress=None):
     extra = {}
     ownership = {}
     async_claims = {}
+    anchorage_proof = {}
 
     def attempt(key, fn):
         if progress:
@@ -320,7 +321,15 @@ def collect(cutoff, *, candidates=None, progress=None):
         if v.lp_kind in {"uniswap_v4", "curve_stableswap"}:
             return amm(v)
         if v.id == "S23":
-            raise ValueError("Offchain claim needs principal reconciliation")
+            if not include_entity_controls:
+                raise ValueError("Offchain claim requires reviewed closing reconciliation")
+            from .anchorage_principal import ESCROW, TOKEN
+            from .anchorage_principal import collect as collect_anchorage
+
+            if ch != "ethereum" or token != TOKEN or owner != ESCROW:
+                raise ValueError("Anchorage configuration changed")
+            anchorage_proof.update(collect_anchorage(pins[ch]["block"]))
+            return D(anchorage_proof["value"])
         from ..normalize.async_vaults import async_vault_exposure
 
         closing_venue = v
@@ -565,6 +574,8 @@ def collect(cutoff, *, candidates=None, progress=None):
         target = liabilities if str(v.pricing_category) == "S2" else positions
         target[key] = attempt(key, lambda v=v: venue_value(v))
         target[key].update(label=v.label, chain=str(v.chain), token=v.token.address.hex)
+        if key == "S23" and target[key]["status"] == "available":
+            target[key].update(quality="estimate", basis=anchorage_proof["basis"])
     # Savings-funded WETH supply is an asset distinct from the depositor claim.
     positions["sparklend_weth"] = attempt(
         "sparklend_weth",
@@ -680,5 +691,41 @@ def collect(cutoff, *, candidates=None, progress=None):
         reads=reader.reads,
         source_policy="Direct finalized chain state; approved par conventions; no BA data",
     )
+    if include_entity_controls:
+        from .balance_sheet_controls import (
+            OTHER_TOKENS,
+            other_controlled_eth,
+            other_controlled_token,
+        )
+        from .balance_sheet_controls import collect as collect_control
+
+        extra["other_controlled_eth"] = attempt(
+            "other_controlled_eth",
+            lambda: other_controlled_eth(
+                reader, cfg, {str(ch): a.hex.lower() for ch, a in prime.alm.items()}
+            ),
+        )
+        extra["other_controlled_eth"].update(
+            basis="reviewed_entity_wallets_excluding_ALMs_Ops_WETH_and_Savings_idle",
+            configuration_revision=cfg["revision"],
+        )
+        for symbol, (token, _, _, _) in OTHER_TOKENS.items():
+            extra["other_token." + symbol] = attempt(
+                "other_token." + symbol,
+                lambda symbol=symbol: other_controlled_token(reader, cfg, symbol),
+            )
+            extra["other_token." + symbol].update(
+                token=token,
+                chain="ethereum",
+                configuration_revision=cfg["revision"],
+                basis="reviewed_controlled_holdings_at_fresh_Chainlink_USD_mark",
+            )
+        if progress:
+            progress("controlled_savings_shares")
+        doc["savings_control"] = collect_control(reader, savings, cfg, liabilities)
+        if doc["savings_control"]["status"] != "available":
+            errors["savings_control"] = doc["savings_control"]["reason"]
+    if anchorage_proof and positions["S23"]["status"] == "available":
+        doc["anchorage_principal"] = anchorage_proof
     doc["proof_hash"] = digest({k: v for k, v in doc.items() if k != "proof_hash"})
     return doc

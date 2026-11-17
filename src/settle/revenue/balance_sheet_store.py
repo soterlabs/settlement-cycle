@@ -85,6 +85,20 @@ def validate(document):
                 or abs(gross - sky - prime) > Decimal("1e-70")
             ):
                 raise ValueError("Stock ownership does not reconcile")
+    if (
+        document["positions"].get("S23", {}).get("basis")
+        == "reviewed_loan_route_cash_principal_not_escrow_balance"
+        and "anchorage_principal" not in document
+    ):
+        raise ValueError("Missing Anchorage principal proof")
+    if "anchorage_principal" in document:
+        from .anchorage_principal import validate as validate_anchorage
+
+        validate_anchorage(document)
+    if "savings_control" in document:
+        from .balance_sheet_controls import validate as validate_control
+
+        validate_control(document["savings_control"], document)
     return document
 
 

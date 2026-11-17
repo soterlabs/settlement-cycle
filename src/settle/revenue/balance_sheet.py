@@ -135,6 +135,8 @@ def annual(year, as_of, inputs, *, selection=None):
         savings.extend((key, label) for key, _, _, _, _, label in EXTRA_SAVINGS)
     families = ["venues", "cash", "components"] + (["stocks"] if v2 else [])
     rows, layout, manifest, periods, chosen = {}, [], {}, [], []
+    has_savings_control = False
+    has_anchorage_principal = False
 
     def add(key, label, parent=None, kind=None, components=None):
         depth = next((r["depth"] + 1 for r in layout if r["id"] == parent), 0)
@@ -356,6 +358,7 @@ def annual(year, as_of, inputs, *, selection=None):
         if v2:
             closing = selected_rows["stocks"]
             document = (closing or {}).get("document", {})
+            has_anchorage_principal |= "anchorage_principal" in document
             closing_ref = "stocks:" + closing["revision_id"] if closing else None
 
             def closing_cell(key, family, document=document, closing_ref=closing_ref):
@@ -395,6 +398,24 @@ def annual(year, as_of, inputs, *, selection=None):
                 debt = document.get("sky_debt", {})
                 if debt.get("status") == "available":
                     rows["sky_debt"][month] = stock(debt["value"], ref=closing_ref)
+                if "savings_control" in document:
+                    has_savings_control = True
+                    from .balance_sheet_controls import validate as validate_control
+
+                    control = validate_control(document["savings_control"], document)
+                    rows["savings.eliminations"][month] = (
+                        {
+                            **stock(
+                                Decimal(control["value"]).copy_negate()
+                                if Decimal(control["value"])
+                                else "0",
+                                ref=closing_ref,
+                            ),
+                            "basis": control["basis"],
+                        }
+                        if control["status"] == "available"
+                        else stock(reason=control["reason"], ref=closing_ref)
+                    )
         comp = selected_rows["components"]
         if v2 and comp:
             treasury = comp.get("document", {}).get("treasury", {}).get("gains", {})
@@ -424,6 +445,38 @@ def annual(year, as_of, inputs, *, selection=None):
                     else stock(reason="ALM ETH closing stock unavailable"),
                 )
             )
+            other_eth = closing.get("extra_assets", {}).get("other_controlled_eth")
+            if other_eth is not None:
+                pieces.append(
+                    (
+                        "other_controlled_eth",
+                        1,
+                        stock(
+                            other_eth["value"],
+                            ref="stocks:" + selected_rows["stocks"]["revision_id"],
+                        )
+                        if other_eth["status"] == "available"
+                        else stock(reason="Other controlled-wallet ETH unavailable"),
+                    )
+                )
+            for key in ["other_token.LINK", "other_token.EURC"]:
+                evidence = closing.get("extra_assets", {}).get(key)
+                if evidence is not None:
+                    next(r for r in layout if r["id"] == "nonstable")["label"] = (
+                        "Other treasury assets"
+                    )
+                    pieces.append(
+                        (
+                            key,
+                            1,
+                            stock(
+                                evidence["value"],
+                                ref="stocks:" + selected_rows["stocks"]["revision_id"],
+                            )
+                            if evidence["status"] == "available"
+                            else stock(reason="Other controlled token valuation unavailable"),
+                        )
+                    )
             rows["nonstable"][month] = combine(pieces)
         native = (comp or {}).get("document", {}).get("steakhouse", {})
         if native.get("status") == "available" and native.get("closing_value") is not None:
@@ -512,6 +565,19 @@ def annual(year, as_of, inputs, *, selection=None):
             sky_direct="Owned LP liquidity split at closing: only historically designated USDT legs belong to Sky; prime assets include the remaining legs. Uncollected fees are separately identified in the evidence.",
             closing_sources="Finalized chain snapshots with raw getter evidence and onchain ETH/USD oracle; no BA data is consumed. Stablecoins use the approved USD-par convention.",
             completeness="Known subtotals only. Offchain principal without claim evidence, opening equity, eliminations and payables remain TBD. No balancing plug.",
+        )
+    if has_savings_control:
+        result["methodology"].update(
+            savings="Gross closing vault claims less evidenced internally held claims, valued on the same closing USD basis. Missing controlled-holder coverage remains TBD.",
+            completeness="Known subtotals only. Offchain principal without claim evidence, opening equity and payables remain TBD; eliminations require complete controlled-holder evidence. No balancing plug.",
+        )
+    if has_anchorage_principal:
+        result["methodology"]["anchorage"] = (
+            "Estimated loan principal from reviewed escrow/loan-wallet transfers. "
+            "August 17 receipt assumes 50M principal and 1,267,944 interest (operator approved); "
+            "July OTC return assumes 10M principal and 36,438 interest. "
+            "Excludes escrow cash, unrelated payments and unmeasured accrued interest. "
+            "New unreviewed loan-route transfers keep the position unavailable; MSC is unchanged."
         )
     result["report_hash"] = digest(result)
     return result

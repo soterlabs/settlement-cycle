@@ -119,3 +119,120 @@ by [Maple's address registry](https://github.com/maple-labs/address-registry/blo
 the documented owner-specific queued/manual-share getters and all existing
 asset/pool/controller checks still apply. The pointer and deployed implementation
 code are captured from chain. This does not expand the MSC allowlist.
+
+## Controlled Savings shares (closing evidence extension)
+
+The closing-stock job now captures `savings_control`: a full Cartesian check of
+all configured Savings vaults against the reviewed cash-flow controlled wallets
+on each chain, plus the Savings vault contracts themselves. `balanceOf(owner)`
+proves the shares; nonzero shares are valued through `convertToAssets(shares)`
+and the same underlying/USD basis as the gross vault liability. `totalSupply`
+and `totalAssets` bound the combined internal claims. The evidence keeps all
+raw getters and pins; the API does not make these calls.
+
+The existing `savings.eliminations` row deducts the supported internal claims
+from gross Savings depositor liabilities. There is no additional asset to remove:
+Savings receipt shares are already excluded from allocation assets and measured
+cash in this reporting policy; the underlying investments/cash remain assets.
+Zero is published only with complete zero-share evidence. Missing reads or
+unsupported valuation leave the elimination TBD. Old pinned snapshots without
+this extension reproduce their former unknown elimination exactly.
+
+Independent historical reads found Spark ALM Ops Multisig
+`0x2e1b01adabb8d4981863394bea23a1263cbaedfc` held Ethereum spUSDC
+(`0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d`) at January–May 2026 closes:
+
+| Month | Internal claim, USD |
+|---|---:|
+| January | 1,138,408.001475 |
+| February | 1,141,838.301370 |
+| March | 1,145,479.550492 |
+| April | 647,905.163815 |
+| May | 649,876.261393 |
+| June–October | 0 |
+
+These are monthly **stocks**, not amounts to sum or settlement refunds.
+`tests/fixtures/spark_savings_control_january.json.gz` retains the January raw
+chain proof and scope. The adjustment affects only newly collected reporting
+B/S snapshots: no MSC settlement, income, cash flow, or margins are recalculated.
+A source backfill must be separately selected; the code change does not rewrite
+existing publications. Other payables and opening equity remain unresolved.
+
+### Other controlled-wallet ETH
+
+Closing snapshots also add native/wrapped ETH held by reviewed entity wallets
+outside the existing ALM inventory. Exclude Savings idle and intents custody;
+exclude each primary ALM's native/WETH (already in `alm_eth`) and Ethereum Ops
+WETH (already in the reserve-token inventory). Ops native ETH remains eligible.
+Use the pinned Ethereum ETH/USD oracle for the additional disjoint stock.
+
+October 31 chain checks found 33.279422951849623186 additional ETH/WETH,
+worth $74,900.99885503939141603462. Most belongs to the DevCo and its reviewed
+contractor Safe. January–October checks found nonzero omitted balances at every
+month-end. These are balance-sheet assets, not newly earned revenue. No MSC
+settlement is changed. Both this inventory and Savings consolidation run only
+in the closing publisher; daily margin sampling keeps its existing call scope.
+
+### Other reviewed treasury tokens
+
+The closing publisher includes canonical Ethereum LINK and EURC held in reviewed
+entity wallets, excluding Savings idle/intents custody and any token already in
+the measured cash perimeter. These are explicit contract identities, never a
+symbol-based discovery rule. The aggregate is labelled **Other treasury assets**
+when these inputs are present; EURC is a euro-denominated claim, not a USD-par
+stablecoin.
+
+| Asset | Token | USD mark | Maximum age |
+|---|---|---|---:|
+| LINK | `0x514910771af9ca656af840dff83e8264ecf986ca` | `0x2c1d072e956affc0d435cb7ac38ef18d24d9127c` | 3,600 seconds |
+| EURC | `0x1abaea1f7c830bd89acc67ec4af516284b1bc33c` | EUR/USD `0xb49f677943bc038e9857d61e7d053caa2c1734c1` | 86,400 seconds |
+
+Addresses and heartbeats were checked against Chainlink's official
+[reference directory](https://reference-data-directory.vercel.app/feeds-mainnet.json),
+which is used by its [documentation](https://github.com/smartcontractkit/documentation/blob/main/src/features/data/chains.ts).
+Token identities are documented by [Chainlink](https://docs.chain.link/resources/link-token-contracts)
+and [Circle](https://developers.circle.com/stablecoins/eurc-contract-addresses).
+Balances, decimals and oracle rounds are historical onchain reads at the same
+closing block. Invalid/stale marks remain unavailable; there is no price fallback.
+
+At October 31 this adds 308.696891100682853602 LINK ($3,589.848494485485) and
+128.05 EURC ($143.06578325). These assets are absent from the existing MORPHO,
+AVAX and reserve-token inventory. Other discovered tokens need verified
+identity, entitlement and valuation evidence before they are added; unsolicited
+tokens advertising stablecoin symbols are not priced at par.
+
+### Anchorage loan principal (reporting only)
+
+S23 uses reviewed USDC transfers between the configured escrow
+`0x49506c3aa028693458d6ee816b2ec28522946872` and the main/OTC loan wallets
+`0x8149c53ea54de2a62c9e4caef29478f1af4c7bd3` /
+`0x8bcd4b0a1ad17521aa12057cabd40c1b32d23181`. The immutable v1 transfer policy
+is `spark_anchorage_principal.v1.json`; raw positive transfers must match it
+exactly through the pinned closing block. Unknown transfers, changed amounts
+or missing history leave S23 unavailable. Zero-value poisoning logs are ignored.
+
+**Approved assumption (17 November 2026):** the 17 August receipt of 51,267,944
+USDC comprises **50,000,000 principal + 1,267,944 interest**:
+[escrow receipt](https://etherscan.io/tx/0x3f9d9db712d79b632e4e4f5e7ea2e4386335efa20060b5c1f3fa2584314bfb08).
+July's OTC repayment is interpreted as the funded 10M principal plus 36,438
+interest. September's OTC 10M repayment and interest are separate transfers.
+Other reviewed loan-wallet receipts are classified as interest. These are
+explicit accounting interpretations, not fields encoded by ERC-20 transfers.
+
+Month-end loan principal is 150M January–April, 250M May, 260M June–July,
+and **210M August–October** (also November 15). September moves the remaining
+10M OTC exposure to the main route; it does not add another 10M overall.
+S23 is marked **estimate**, with the reviewed policy and events retained in the
+closing evidence. No unmeasured interest receivable or impairment is inferred.
+
+ALM→escrow funding alone overstates the loan: duplicate advances/refunds and
+133,499.72 of separate April payments are not advances to these loan wallets.
+The separate payments' expense/other-claim classification remains unresolved;
+this change neither expenses them nor invents another receivable. Excess escrow
+funding returned alongside interest is also excluded from loan principal.
+Escrow cash and other assets are not included in this loan row.
+
+This logic runs in the closing reporting publisher only. It does not modify
+MSC cash-receipt classifications, settlement reports, current-year earnings,
+or already selected historical reporting revisions. A source refresh and new
+reporting publication are required to expose the new calculation in the API.
