@@ -64,10 +64,10 @@ Period: 2026-10-01 → 2026-10-31 (31 days)
 | S20 | Janus Henderson Anemoy Treasury Fund (JTRSY) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S21 | Superstate Short Duration US Government Securities Fund (USTB) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 100.00% | $0.00 |
 | S22 | Superstate Crypto Carry Fund (USCC) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S23 | Anchorage tri-party loan | $1.37 | $1.37 | $249,758.01 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
+| S23 | Anchorage loan — interest receipts (balances: escrow only) | $1.37 | $1.37 | $249,758.01 | $0.00 | $967,807.00 | $967,807.00 | $0.00 | 0% | $0.00 |
 | S24 | Spark.fi USDT Reserve Curve (sUSDS/USDT) | $0.84 | $0.84 | $0.84 | $0.00 | $0.00 | $0.00 | $0.00 | 100.00% | $0.00 |
 | S25 | Spark.fi PYUSD Reserve Curve (PYUSD/USDS) | $3.88 | $3.89 | $3.88 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
-| S26 | USDC raw (ALM idle) | $0.00 | $0.00 | $0.00 | -$967,807.00 | $967,807.00 | $967,807.00 | $0.00 | 0% | $0.00 |
+| S26 | USDC raw (ALM idle; Anchorage interest excluded) | $0.00 | $0.00 | $0.00 | -$967,807.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S27 | USDT raw (ALM idle — $442M as of 2026-04) | $0.00 | $0.00 | $11.36 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
 | S28 | PYUSD raw (ALM idle — $677M as of 2026-04) | $197,178,528.75 | $242,552,946.58 | $238,225,697.24 | $43,943,567.89 | $1,430,849.95 | $1,430,849.95 | $0.00 | 0% | $0.00 |
 | S29 | DAI raw (ALM idle) | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | $0.00 | 0% | $0.00 |
@@ -100,6 +100,8 @@ Period: 2026-10-01 → 2026-10-31 (31 days)
 | S66 | Spark.fi RLUSD Reserve Uniswap V4 (RLUSD/USDS) | $19,999,614.05 | $0.00 | $35,482,845.27 | -$20,007,198.69 | $7,584.64 | $7,584.64 | $0.00 | 0% | $0.00 |
 | S70 | Spark RLUSD (SparkLend spToken) | $10,000,313.31 | $30,000,056.88 | $24,498,736.39 | $19,957,526.71 | $42,216.86 | $46,457.48 | $0.00 | 0% | $0.00 |
 | S72 | Sentora RLUSD vault (Morpho) | $250,000,309.62 | $499,999,831.31 | $300,782,009.73 | $249,959,346.94 | $40,174.75 | $40,174.75 | $0.00 | 0% | $0.00 |
+
+> Anchorage interest received at the ALM is attributed to S23 and removed from S26 once. S23 balance columns show escrow cash, not outstanding loan principal. S26 retains other ALM USDC balances and any other income. Borrowing-cost allocation and aggregate settlement amounts are unchanged.
 
 ## DR per ref code
 

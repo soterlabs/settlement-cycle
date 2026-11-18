@@ -46,6 +46,7 @@ _REPO = Path(__file__).resolve().parent.parent
 # script run as a CLI without installing the package.
 sys.path.insert(0, str(_REPO / "src"))
 from settle.load.cof_attribution import compute_sheet_rows  # noqa: E402
+from settle.load.loan_income_display import display_rows  # noqa: E402
 from settle.load.summary import _venue_sort_key  # noqa: E402
 from settle.load.reference_rate_note import reference_rate_note  # noqa: E402
 
@@ -1007,6 +1008,7 @@ def build_xlsx(prime_id: str, month: str, *, output_dir: Path | None = None) -> 
     cell_dir = output_dir if output_dir is not None else _REPO / "settlements" / prime_id / month
     prov     = _read_provenance(cell_dir)
     sheet, _totals = compute_sheet_rows(prov, prime_id)
+    sheet = display_rows(prov, sheet, workbook=True)
     cfg      = _read_prime_yaml(prime_id)
     sde      = _read_sde(prime_id, date.fromisoformat(prov["period"]["start"]))
 
