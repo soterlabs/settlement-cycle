@@ -79,3 +79,12 @@ def test_corrupt_attribution_cannot_be_rendered_as_income():
     ] = "999999"
     with pytest.raises(ValueError, match="reconcile"):
         receipt_amount(p)
+
+
+@pytest.mark.parametrize("venue_id", ["S23", "S26"])
+def test_duplicate_attribution_cannot_silently_use_legacy_display(venue_id):
+    p = october()
+    views = p["venue_views"]["settlement"]
+    views.append(deepcopy(next(r for r in views if r["venue_id"] == venue_id)))
+    with pytest.raises(ValueError, match="Duplicate"):
+        display_rows(p, p["venue_breakdown"])

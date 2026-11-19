@@ -17,11 +17,11 @@ def receipt_amount(prov):
         return None
     views = (prov.get("venue_views") or {}).get("settlement", [])
     matches = [r for r in views if r.get("venue_id") in {"S23", "S26"}]
-    if len(matches) != 2:
-        return None  # Legacy reports need retained payer attribution; never guess from S26 total.
     by_id = {r["venue_id"]: r for r in matches}
-    if set(by_id) != {"S23", "S26"}:
+    if len(by_id) != len(matches):
         raise ValueError("Duplicate Anchorage display attribution")
+    if set(by_id) != {"S23", "S26"}:
+        return None  # Legacy reports need retained payer attribution; never guess from S26 total.
     loan, cash = by_id["S23"], by_id["S26"]
     if any(r.get("status") != "available" or not r.get("enabled") for r in matches):
         return None
