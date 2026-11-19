@@ -117,7 +117,7 @@ def replay(wallet_inputs=None):
         'src/settle/revenue/BALANCE_SHEET_GUIDE.md': 'faeb167ff5005593d4a30c79f641b7803a9d393827a6ff21b8f3d699863e31e1',
     })
     # Human-readable Anchorage receipt attribution only; retained MSC inputs unchanged.
-    reporting_sources['src/settle/load/loan_income_display.py'] = '959467611b832cc43bb867cf6e9fb599db1600d9c5c430fbc71390fdfb33fc32'
+    reporting_sources['src/settle/load/loan_income_display.py'] = '9c3ce6a824fc5da4d066dc23239a522ced56ac15d1261c60d7b817d73dd21ace'
     reporting_sources['src/settle/load/summary.py'] = '34b0381261040e2d2ca203927a19e899289a2f6fcdfdea07b5e15d5c8c8e33a1'
     for path, sha in reporting_sources.items():
         if path in changed:

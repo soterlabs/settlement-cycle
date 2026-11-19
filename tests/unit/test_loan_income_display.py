@@ -34,7 +34,7 @@ def test_october_attribution_preserves_cash_and_totals():
     assert p == before
     summary = render_summary(p)
     assert "Anchorage loan — interest receipts (balances: escrow only)" in summary
-    assert "USDC raw (ALM idle; Anchorage interest excluded)" in summary
+    assert "USDC raw (ALM idle)" in summary
     assert "not outstanding loan principal" in summary
 
 

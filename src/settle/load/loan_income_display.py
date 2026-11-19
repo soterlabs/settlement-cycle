@@ -64,7 +64,7 @@ def display_rows(prov, rows, *, workbook=False):
             row["label"] = (
                 "Anchorage loan — interest receipts (balances: escrow only)"
                 if key == "S23"
-                else "USDC raw (ALM idle; Anchorage interest excluded)"
+                else "USDC raw (ALM idle)"
             )
             if workbook:
                 row["note"] = (row.get("note", "") + " " + NOTE).strip()
