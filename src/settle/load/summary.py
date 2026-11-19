@@ -46,6 +46,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
+from .loan_income_display import NOTE, display_rows, receipt_amount
 from .reference_rate_note import reference_rate_note
 
 
@@ -311,7 +312,7 @@ def render_summary(prov: dict) -> str:
     # and rendered position-only in a dedicated sub-section below — see
     # the field docstring on ``Venue.hide_per_venue_pnl`` for rationale.
     all_venues = sorted(
-        prov.get("venue_breakdown") or [],
+        display_rows(prov, prov.get("venue_breakdown") or []),
         key=lambda v: _venue_sort_key(v.get("venue_id", "")),
     )
     venues       = [v for v in all_venues if not v.get("hide_per_venue_pnl")]
@@ -343,6 +344,9 @@ def render_summary(prov: dict) -> str:
                 f"{_usd(spread)} |"
             )
         lines.append("")
+
+    if receipt_amount(prov) is not None:
+        lines.extend(["> " + NOTE, ""])
 
     realized = []
     issuer_receipts = []
