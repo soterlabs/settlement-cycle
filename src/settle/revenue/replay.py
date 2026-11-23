@@ -11,9 +11,10 @@ job report ``already_running`` and skip that day's publication.
 This driver instead calls :func:`settle.revenue.worker.run_prime` for one cutoff
 at a time, newest first, releasing the lock after each. It only starts a cutoff
 when the prime lock is free AND it is outside the pause window (default
-16:00-03:00 UTC): a worst-case Spark cutoff (three attempts of ~45 minutes)
-started at 15:59 still releases the lock before the 20:17 job, which runs
-without waiting for the lock, and nothing starts before its six-hour watchdog. Each cutoff keeps the worker's existing
+16:00-21:00 UTC). A worst-case Spark cutoff (three attempts of ~45 minutes)
+started at 15:59 still releases the lock before the 20:17 job, which takes the
+lock without waiting. Once that job holds the lock the replay only polls, so it
+cannot delay it; the window ends at 21:00 to allow for cron start jitter. Each cutoff keeps the worker's existing
 behaviour: reference-rate gates, bounded retries, immutable append-only
 revisions, reuse of an identical current revision, required venue views and
 financial-reporting projection. Nothing is deleted or rewritten.
@@ -34,7 +35,7 @@ from datetime import time as clock
 from .worker import deadline, run_prime
 
 _log = logging.getLogger(__name__)
-DEFAULT_PAUSE = (clock(16, 0), clock(3, 0))
+DEFAULT_PAUSE = (clock(16, 0), clock(21, 0))
 LOCK_POLL_SECONDS = 30
 CONNECT_RETRIES, CONNECT_BACKOFF_SECONDS = 10, 60
 
@@ -135,7 +136,7 @@ def main():
     parser.add_argument('--from', dest='start', type=date.fromisoformat, required=True)
     parser.add_argument('--to', dest='end', type=date.fromisoformat, required=True)
     parser.add_argument('--pause-utc', type=parse_window, default=DEFAULT_PAUSE,
-                        help='Do not start a cutoff in this UTC window (default 16:00-03:00)')
+                        help='Do not start a cutoff in this UTC window (default 16:00-21:00)')
     args = parser.parse_args()
     os.environ['SETTLE_REQUIRE_POSTGRES'] = '1'
     logging.basicConfig(level=logging.INFO)

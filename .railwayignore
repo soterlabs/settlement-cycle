@@ -1,0 +1,6 @@
+# Upload size: tests/ and reconciliation evidence are not runtime inputs
+# (.dockerignore already drops tests/). Keep the two files src/ reads.
+tests/
+reconciliation/*
+!reconciliation/spark_idle_usdc_august_exposure.json
+!reconciliation/spark_s66_august_repair_manifest.json
