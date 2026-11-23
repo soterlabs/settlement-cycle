@@ -104,3 +104,63 @@ The fix does not manufacture missing provider data, revise contractual inputs,
 or replace partial venue metrics with zero. Additional concurrent prime jobs
 increase simultaneous provider requests; inspect their failure ledgers during
 rollout. Each prime retains bounded retries and independent completion status.
+
+## Stale October/November observations (November 23, 2026)
+
+The daily history covered every cutoff from October 1 to November 22 for all six
+primes. Many observations had been computed by workers that predated the October
+close review (#275), so they lacked allocations that current code includes. The
+dashboard's daily view only catalogues venues that appear in an observation, so
+those October month-to-date figures silently understated revenue:
+
+| Prime | Stale cutoffs | Missing or incorrect on October 31 (settled October revenue) |
+| --- | --- | --- |
+| Grove | Oct 1 – Nov 5 | E43 Steakhouse USDC Base ($1,298,008), E44 Diamond PAU LP ($4,146) |
+| Osero | Oct 1 – Nov 10 | O3 Gauntlet USDC Prime ($10,607) |
+| Spark | Oct 1 – Nov 8 | S70 and S71 absent through Nov 1, and S72 through Nov 8. S64 present at $0. S32 MTD is −$109.57m on Oct 29 and −$109.47m on Oct 31: the 100m-share sUSDS transfer to the SubProxy was booked as a loss before #275's holder-net capital method (settled S32: +$1,983,181) |
+
+Obex, Keel and Skybase observations already include every current venue.
+
+`--missing-views-only` keeps these observations because their views exist. An
+explicit worker window would replay them, but it holds the prime lock for the
+whole window, so the 20:17 job would report `already_running` and skip a day.
+`python -m settle.revenue.replay` instead runs the unchanged worker for one
+cutoff at a time, newest first:
+- It releases the lock between cutoffs.
+- It starts a cutoff only when the lock is free and the time is outside 16:00–03:00
+  UTC, re-checking between lock polls. A worst-case Spark cutoff (three attempts
+  of about 45 minutes) still finishes before the 20:17 job, which does not wait
+  for the lock.
+- One failing cutoff is recorded and the next one still runs.
+- It keeps reference-rate gates, retries, immutable revisions, reuse of identical
+  current revisions and the financial-reporting projection.
+- It exits immediately if no code version can be resolved.
+
+While a replay runs, `/v1/revenue/status` `latest_attempt` usually shows an old
+replayed cutoff. The completion monitor ignores attempts older than the due
+cutoff, so a replay cannot raise a false alarm. Its failed-attempt and
+deadline checks, however, are masked for those primes for the whole replay.
+GitHub runs the 03:00 cron late (10:20–11:30 UTC in recent runs), by which time
+replay attempts have started.
+
+The monitor's `actual_cutoff` check still catches a missing or late daily
+publication. A failed daily job leaves the due cutoff unpublished and fails the
+monitor. While replays run, also check each daily service's logs for
+`ALERT revenue failure`. Connection errors are retried with a backoff before a
+cutoff is recorded as failed.
+
+Run one unscheduled Railway service per prime (`settle-revenue-replay-<prime>-oct2026`
+in `.railway/railway.ts`):
+
+1. Merge, then `railway config plan` and review it: it should add three services
+   and delete or alter nothing. Then `railway config apply`.
+2. Set `REVENUE_CODE_VERSION` on each service to the merged main commit.
+3. Upload from a clean checkout of exactly that commit:
+   `railway up --service settle-revenue-replay-<prime>-oct2026 --detach`.
+   The services have no GitHub source, so a later push does not restart a replay
+   under a different code version.
+
+Progress is visible in each service's logs and in `revenue_attempts`. Verify the
+results through `/v1/revenue/<prime>/history` (current venues present, Spark S32
+corrected) rather than from the launch alone. Replayed revisions are also
+projected to the financial reporting API by the worker's existing hook.
