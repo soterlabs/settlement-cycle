@@ -173,7 +173,39 @@ export default defineRailway(() => {
     ].map((name) => [name, preserve()])),
   }));
 
+  // One-off replays of daily observations computed before October's venue
+  // additions (Grove E43/E44, Osero O3, Spark S64/S70/S72 and the corrected S32
+  // sUSDS capital method). See docs/pipeline/daily-publication-recovery.md.
+  // Unscheduled and without a GitHub source, like the jobs above: a push to
+  // main must not restart a long replay under a different code version, so each
+  // is uploaded from a clean main checkout with REVENUE_CODE_VERSION set to it.
+  // settle.revenue.replay takes the prime lock per cutoff and does not start a
+  // cutoff between 19:00 and 03:00 UTC, so the 20:17 daily jobs keep priority.
+  const replayJobs = [
+    ["spark", "2026-10-01", "2026-11-08"],
+    ["grove", "2026-10-01", "2026-11-05"],
+    ["osero", "2026-10-01", "2026-11-10"],
+  ].map(([prime, from, to]) => service(`settle-revenue-replay-${prime}-oct2026`, {
+    replicas: { "us-west2": 1 },
+    build: { builder: "DOCKERFILE" as const, dockerfilePath: "Dockerfile" },
+    deploy: {
+      startCommand: `python -m settle.revenue.replay --prime ${prime} --from ${from} --to ${to}`,
+      restartPolicyType: "NEVER",
+    },
+    env: {
+      DATABASE_URL: "${{Postgres.DATABASE_URL}}",
+      ...Object.fromEntries([
+        "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC", "OPTIMISM_RPC",
+        "UNICHAIN_RPC", "AVALANCHE_C_RPC", "PLUME_RPC", "MONAD_RPC", "ROBINHOOD_RPC",
+        "SETTLE_INPUT_REVISION", "REVENUE_START_DATE",
+      ].map((name) => [name, `\${{settle-revenue-daily.${name}}}`])),
+      SETTLE_REQUIRE_POSTGRES: "1",
+      REVENUE_CODE_VERSION: preserve(),
+      REPLAY_TIMEOUT_SECONDS: "345600",
+    },
+  }));
+
   return project("settlement-cycle-data", {
-    resources: [settleApi, Postgres, settleCron, revenueDaily, ...revenuePrimes, financialReporting, sparkReporting, cashFlowReporting, ...historicalJobs, postgresVolume],
+    resources: [settleApi, Postgres, settleCron, revenueDaily, ...revenuePrimes, financialReporting, sparkReporting, cashFlowReporting, ...historicalJobs, ...replayJobs, postgresVolume],
   });
 });

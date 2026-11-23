@@ -104,3 +104,45 @@ The fix does not manufacture missing provider data, revise contractual inputs,
 or replace partial venue metrics with zero. Additional concurrent prime jobs
 increase simultaneous provider requests; inspect their failure ledgers during
 rollout. Each prime retains bounded retries and independent completion status.
+
+## Stale October/November observations (November 23, 2026)
+
+The daily history covered every cutoff from October 1 to November 22 for all six
+primes. Many observations had been computed by workers that predated the October
+close review (#275), so they lacked allocations that current code includes. The
+dashboard's daily view only catalogues venues that appear in an observation, so
+those October month-to-date figures silently understated revenue:
+
+| Prime | Stale cutoffs | Missing or incorrect on October 31 (settled October revenue) |
+| --- | --- | --- |
+| Grove | Oct 1 – Nov 5 | E43 Steakhouse USDC Base ($1,298,008), E44 Diamond PAU LP ($4,146) |
+| Osero | Oct 1 – Nov 10 | O3 Gauntlet USDC Prime ($10,607) |
+| Spark | Oct 1 – Nov 8 | S64, S70, S72 absent. S32 MTD is −$109.47m from Oct 29: the 100m-share sUSDS transfer to the SubProxy was booked as a loss before #275's holder-net capital method (settled S32: +$1,983,181) |
+
+Obex, Keel and Skybase observations already include every current venue.
+
+`--missing-views-only` keeps these observations because their views exist. An
+explicit worker window would replay them, but it holds the prime lock for the
+whole window, so the 20:17 job would report `already_running` and skip a day.
+`python -m settle.revenue.replay` instead runs the unchanged worker for one
+cutoff at a time, newest first:
+- It releases the lock between cutoffs.
+- It does not start a cutoff between 19:00 and 03:00 UTC.
+- It keeps reference-rate gates, retries, immutable revisions, reuse of identical
+  current revisions and the financial-reporting projection.
+
+Run one unscheduled Railway service per prime (`settle-revenue-replay-<prime>-oct2026`
+in `.railway/railway.ts`):
+
+1. Merge, then `railway config plan` and review it: it should add three services
+   and delete or alter nothing. Then `railway config apply`.
+2. Set `REVENUE_CODE_VERSION` on each service to the merged main commit.
+3. Upload from a clean checkout of exactly that commit:
+   `railway up --service settle-revenue-replay-<prime>-oct2026 --detach`.
+   The services have no GitHub source, so a later push does not restart a replay
+   under a different code version.
+
+Progress is visible in each service's logs and in `revenue_attempts`. Verify the
+results through `/v1/revenue/<prime>/history` (current venues present, Spark S32
+corrected) rather than from the launch alone. Replayed revisions are also
+projected to the financial reporting API by the worker's existing hook.
