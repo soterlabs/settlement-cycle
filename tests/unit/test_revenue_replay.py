@@ -106,3 +106,28 @@ def test_window_parsing_and_guards():
         module.replay(connect, 'spark', date(2026, 11, 23), date(2026, 11, 24), run=run, now=clock_.now)
     with pytest.raises(ValueError, match='from must not be after'):
         module.replay(connect, 'spark', date(2026, 11, 3), date(2026, 11, 1), run=run, now=clock_.now)
+
+
+def test_connection_errors_back_off_before_failing_a_cutoff():
+    clock_, calls, _, _, run = harness(datetime(2026, 11, 24, 5, 0, tzinfo=UTC))
+    failures = {'left': 3}
+
+    @contextmanager
+    def flaky():
+        if failures['left']:
+            failures['left'] -= 1
+            raise ConnectionError('database restarting')
+        yield object()
+
+    summary = module.replay(flaky, 'spark', date(2026, 11, 3), date(2026, 11, 3), run=run,
+                            now=clock_.now, sleep=clock_.sleep)
+    assert summary['status'] == 'ok' and len(calls) == 1
+    assert clock_.slept == 3 * module.CONNECT_BACKOFF_SECONDS
+
+    def down():
+        raise ConnectionError('database down')
+
+    summary = module.replay(down, 'spark', date(2026, 11, 2), date(2026, 11, 3), run=run,
+                            now=clock_.now, sleep=clock_.sleep)
+    assert summary['failed'] == [{'cutoff': '2026-11-03', 'status': 'failed', 'error_type': 'ConnectionError'},
+                                 {'cutoff': '2026-11-02', 'status': 'failed', 'error_type': 'ConnectionError'}]

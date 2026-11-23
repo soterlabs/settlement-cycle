@@ -136,12 +136,18 @@ cutoff at a time, newest first:
   current revisions and the financial-reporting projection.
 - It exits immediately if no code version can be resolved.
 
-While a replay runs, `/v1/revenue/status` `latest_attempt` can show an old
+While a replay runs, `/v1/revenue/status` `latest_attempt` usually shows an old
 replayed cutoff. The completion monitor ignores attempts older than the due
-cutoff, so a replay cannot raise a false alarm. However, a replay attempt that
-starts after a failed daily attempt hides that failure from the monitor's
-latest-attempt check. In that window, check the services' logs and
-`actual_cutoff`, which the monitor still enforces.
+cutoff, so a replay cannot raise a false alarm. Its failed-attempt and
+deadline checks, however, are masked for those primes for the whole replay.
+GitHub runs the 03:00 cron late (10:20–11:30 UTC in recent runs), by which time
+replay attempts have started.
+
+The monitor's `actual_cutoff` check still catches a missing or late daily
+publication. A failed daily job leaves the due cutoff unpublished and fails the
+monitor. While replays run, also check each daily service's logs for
+`ALERT revenue failure`. Connection errors are retried with a backoff before a
+cutoff is recorded as failed.
 
 Run one unscheduled Railway service per prime (`settle-revenue-replay-<prime>-oct2026`
 in `.railway/railway.ts`):

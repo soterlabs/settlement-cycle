@@ -36,6 +36,7 @@ from .worker import deadline, run_prime
 _log = logging.getLogger(__name__)
 DEFAULT_PAUSE = (clock(16, 0), clock(3, 0))
 LOCK_POLL_SECONDS = 30
+CONNECT_RETRIES, CONNECT_BACKOFF_SECONDS = 10, 60
 
 
 def parse_window(text):
@@ -71,17 +72,36 @@ def replay(connect, prime, start, end, *, window=DEFAULT_PAUSE, run=run_prime,
     reports = []
     cutoff = end
     while cutoff >= start:
+        connect_failures = 0
         while True:
             if (wait := seconds_until_open(now(), window)) > 0:
                 _log.info('replay paused for the scheduled daily window prime=%s next=%s', prime, cutoff)
                 sleep(min(wait, 300))
                 continue
             try:
+                conn_cm = connect()
+                conn = conn_cm.__enter__()
+            except Exception as exc:
+                # A database restart or network blip is not this cutoff's fault:
+                # back off and retry rather than burning through cutoffs.
+                connect_failures += 1
+                _log.warning('replay cannot connect prime=%s cutoff=%s attempt=%s error=%s',
+                             prime, cutoff, connect_failures, type(exc).__name__)
+                if connect_failures < CONNECT_RETRIES:
+                    sleep(CONNECT_BACKOFF_SECONDS)
+                    continue
+                report = {'prime': prime, 'status': 'failed',
+                          'results': [{'cutoff': str(cutoff), 'status': 'failed',
+                                       'error_type': type(exc).__name__}]}
+                break
+            try:
                 # Never wait inside the worker for the lock: a wait could end
                 # inside the pause window. Re-check the window between polls.
-                with connect() as conn:
+                try:
                     report = run(conn, prime, start=cutoff, end=cutoff, require_views=True,
                                  wait_for_lock=False, now=now())
+                finally:
+                    conn_cm.__exit__(None, None, None)
             except Exception as exc:  # keep going; one bad cutoff must not end the replay
                 report = {'prime': prime, 'status': 'failed',
                           'results': [{'cutoff': str(cutoff), 'status': 'failed',

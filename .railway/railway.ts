@@ -176,7 +176,7 @@ export default defineRailway(() => {
   }));
 
   // One-off replays of daily observations computed before October's venue
-  // additions (Grove E43/E44, Osero O3, Spark S64/S70/S72 and the corrected S32
+  // additions (Grove E43/E44, Osero O3, Spark S70/S71/S72 and the corrected S32
   // sUSDS capital method). See docs/pipeline/daily-publication-recovery.md.
   // Unscheduled and without a GitHub source, like the jobs above: a push to
   // main must not restart a long replay under a different code version, so each
