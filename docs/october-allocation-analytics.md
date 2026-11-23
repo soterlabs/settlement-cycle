@@ -33,7 +33,7 @@ recalculated here.
 |---|---|---|
 | Osero | O1 SparkLend spUSDS, O2 idle USDS, **O3 Gauntlet USDC Prime (new in October)** | Calculated; frozen inputs committed |
 | Obex | V1 Maple syrupUSDC | Calculated; frozen inputs committed |
-| Grove | 40+ allocation, custody and Basin rows | See Grove section |
+| Grove | 46 allocation, custody, boundary and Basin rows | Calculated; frozen inputs committed |
 | Spark | Savings-funded mixture; Anchorage facility | See Spark section |
 | Keel | No allocator ilk and no ALM venues (`config/keel.yaml`); October control has zero venues and zero Sky revenue | Not applicable; nothing to publish |
 | Skybase | Same (`config/skybase.yaml`) | Not applicable; nothing to publish |
@@ -109,6 +109,58 @@ An independent Decimal check recomputes every field from the control's
 `venue_breakdown` and the document's cost and exposure: gross revenue, retained
 revenue, net PnL, monthly returns and `(1 + r) ** (365 / 31) - 1`. It found no
 differences.
+
+## Grove
+
+Grove's normalized history (2,128 Ethereum transactions plus Base, Avalanche,
+Monad and Plume) is frozen under `reconciliation/monthly-allocation-inputs/grove/2026-10/`.
+As in September, readiness uses `--apply-capital-adapters` (executed-spell
+capital adapters), and the reproduction test applies them too.
+
+**Double-charge fix.** `normalize/allocation_capital.py` used to add a
+tracing-only `E12_PAU` account for the Diamond PAU's Uniswap V3 AUSD/USDC NFT
+whenever no venue with that ID existed. From October, `config/grove.yaml`
+tracks the same NFT as the configured venue **E44**, at the same pool and
+holder. Both accounts therefore carried identical principal: $21.6m on
+average, charged $71,360 twice. `with_grove_pau_tracing` now adds `E12_PAU`
+only when no configured Uniswap V3 venue already holds that pool at the PAU, so
+E44 alone owns the capital. September and earlier analytics had no E44 and are
+unaffected. The recapture also moves E44's average principal by $43 and its cost
+by $0.14, because collected fees no longer route through two accounts. E15 and
+the PAU idle-cash rows change by less than one cent.
+
+| Venue | Allocation | Average exposure | Borrowing cost | Gross APY | Net APY |
+|---|---|---:|---:|---:|---:|
+| E21 | Galaxy Arch CLO Token (GACLO-1) | $17,907,834.79 | $59,063.64 | 9.76% | 5.60% |
+| E42 | Galaxy Warehouse (facility principal; not escrow cash) | $375,250,001.00 | $1,237,509.46 | 6.11% | 2.08% |
+| E7 | Securitize STAC | $103,405,568.80 | $327,222.80 | 4.98% | 1.15% |
+| E43 | Grove x Steakhouse USDC (Base, ERC-4626) | $316,004,827.20 | $1,037,592.05 | 4.94% | 0.97% |
+| E23 | Steakhouse Prime Instant (Base) | $24,174,190.93 | $76,212.45 | 4.84% | 1.03% |
+| E19 | Grove x Steakhouse USDC High Yield (Base) | $36,790,814.81 | $119,054.97 | 4.82% | 0.91% |
+| E8 | JAAA | $131,081,648.69 | $413,148.65 | 4.75% | 0.95% |
+| E20 | JAAA (Avalanche) | $262,568,675.09 | $825,330.90 | 4.75% | 0.96% |
+| E4 | Grove x Steakhouse USDC (Morpho 4626) | $14,922,201.28 | $48,941.96 | 4.57% | 0.62% |
+| E10 | BUIDL-I (100% Sky-direct) | $114,942,756.08 | $0.00 | 3.80% | 0.00% |
+| E9 | JTRSY (100% Sky-direct) | $281,849,182.19 | $0.00 | 3.75% | 0.00% |
+| E22 | Apollo ACRDX | $20,599,353.69 | $66,046.02 | 1.69% | -2.08% |
+| E12 | Uniswap V3 AUSD/USDC (ALM) | $8,387,500.28 | $27,537.18 | 1.14% | -2.69% |
+| E44 | Uniswap V3 AUSD/USDC (Diamond PAU) | $21,615,589.13 | $71,360.14 | 0.23% | -3.60% |
+| E15 | USDC raw (ALM idle) | $267,741.94 | $888.13 | 0.00% | -3.84% |
+| E27 | USDC raw on Base (ALM idle) | $14,970.74 | $50.01 | 0.00% | -3.86% |
+
+The other 30 rows break down as follows:
+- **9** have no principal in the period.
+- **1** is exempt idle USDS.
+- **8** are covered by a boundary (the E36 Monad relay; the JTRSY Basin escrow is
+  covered by `E_JTRSY_BASIN`).
+- **1** is income-only (Agora incentives).
+- **4** custody rows have a calculable cost but no revenue line, so their yields are unavailable.
+- **2** Basin rows (BUIDL and JTRSY) still await deduction attribution, as in
+  September. Their cost stays null.
+
+Known allocation costs total $4,360,264.42 against a $4,435,995.50 global
+charge. The $75,731.08 difference includes the two pending Basin rows. It is
+reported and not assigned to any venue.
 
 ## Publication
 

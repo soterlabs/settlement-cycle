@@ -108,8 +108,8 @@ def test_september_frozen_inputs_reproduce_published_candidate(prime):
     assert D(control['results']['sky_revenue']) > total
 
 
-@pytest.mark.parametrize('prime', ['osero', 'obex'])
-def test_october_frozen_inputs_reproduce_published_candidate(prime):
+@pytest.mark.parametrize('prime,adapters', [('osero', False), ('obex', False), ('grove', True)])
+def test_october_frozen_inputs_reproduce_published_candidate(prime, adapters):
     """October artifacts recompute exactly from the committed inputs and the
     finalized October close (settlement-cycle #275), and their yields stay
     consistent with that close's venue revenue."""
@@ -127,9 +127,15 @@ def test_october_frozen_inputs_reproduce_published_candidate(prime):
     assert idle['control_sha256'] == hashlib.sha256(control_path.read_bytes()).hexdigest()
     capital.validate_history_manifest(json.loads((root / 'pins.json').read_text()), prime=prime,
         end=date(2026, 10, 31), control=control, history_sha256=hashlib.sha256(history_path.read_bytes()).hexdigest())
+    if adapters:
+        # Grove's fresh capture needs the reviewed executed-spell adapters.
+        from settle.compute.executed_spell_capital import apply_executed_spells
+        history = apply_executed_spells(history)
     computed = capital.report(prime, history, control, idle, date(2026, 10, 1), date(2026, 10, 31))
     saved = json.loads(gzip.decompress(Path(f'reconciliation/allocation_capital_readiness_{prime}_2026_10.json.gz').read_bytes()))
     assert saved['results'] == [computed]
+    # The Diamond PAU NFT is carried once, by its configured venue (E44).
+    assert 'E12_PAU' not in {r['venue'] for r in computed['allocations']}
     # Every venue with October settlement revenue has an allocation row.
     assert {v['venue_id'] for v in control['venue_breakdown']} <= {r['venue'] for r in computed['allocations']}
     candidate = json.loads(Path(f'reconciliation/allocation_yields_{prime}_2026_10.json').read_text())
@@ -138,13 +144,20 @@ def test_october_frozen_inputs_reproduce_published_candidate(prime):
                         Path(f'reconciliation/allocation_yields_{prime}_2026_10.json'))
     revenue = {v['venue_id']: v for v in control['venue_breakdown']}
     for row in documents[0]['allocations']:
-        v = revenue[row['venue_id']]
+        v = revenue.get(row['venue_id'])
+        if v is None or row['gross_revenue_usd'] is None:
+            # Custody/boundary rows without a revenue line keep null revenue.
+            assert row['net_pnl_usd'] is None and row['gross_apy'] is None
+            continue
         assert D(row['gross_revenue_usd']) == D(v['actual_revenue']) + D(v['external_revenue'])
         assert D(row['prime_retained_revenue_usd']) == D(v['revenue'])
-        assert D(row['net_pnl_usd']) == D(row['prime_retained_revenue_usd']) - D(row['borrowing_cost_usd'])
+        if row['borrowing_cost_usd'] is None:
+            assert row['net_pnl_usd'] is None and row['net_apy'] is None
+        else:
+            assert D(row['net_pnl_usd']) == D(row['prime_retained_revenue_usd']) - D(row['borrowing_cost_usd'])
     # Original-capital allocation costs stay below the global charge; the
     # difference is reported, never pushed onto a venue.
-    total = sum((D(r['cost_of_funds']) for r in computed['allocations']), D(0))
+    total = sum((D(r['cost_of_funds']) for r in computed['allocations'] if r['cost_of_funds'] is not None), D(0))
     assert D(control['results']['sky_revenue']) > total
 
 

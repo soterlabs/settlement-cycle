@@ -177,6 +177,40 @@ class EventBlockResolver:
         return getattr(self.delegate, name)
 
 
+GROVE_DIAMOND_PAU = Address.from_str('0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153')
+
+
+def _same_lp_custody(venue, holder) -> bool:
+    """A configured Uniswap V3 venue held at ``holder`` in Grove's E12 pool."""
+    return (
+        getattr(venue, 'lp_kind', None) == 'uniswap_v3'
+        and getattr(venue, 'holder_override', None) == holder
+        and str(getattr(getattr(venue, 'token', None), 'address', '')).lower()
+        == '0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d'
+    )
+
+
+def with_grove_pau_tracing(prime, analytics_only):
+    """Add Grove's tracing-only E12_PAU row unless a venue already covers it.
+
+    Separate PAU-held NFT1352494 in the same AUSD/USDC pool. This is
+    tracing-only: adding custody coverage must not regenerate revenues or
+    silently introduce a zero-revenue row into settlement accounting. Once a
+    configured venue covers the same pool at the PAU holder (E44 from October
+    2026), it owns this capital: synthesizing E12_PAU as well would carry the
+    same NFT twice and charge its borrowing cost twice.
+    """
+    if prime.id != 'grove' or any(
+        v.id == 'E12_PAU' or _same_lp_custody(v, GROVE_DIAMOND_PAU) for v in prime.venues
+    ):
+        return prime, analytics_only
+    legacy = next((v for v in prime.venues if v.id == 'E12'), None)
+    if legacy is None:
+        return prime, analytics_only
+    pau = replace(legacy, id='E12_PAU', notional_principal_usd=None, holder_override=GROVE_DIAMOND_PAU)
+    return replace(prime, venues=[*prime.venues, pau]), (*analytics_only, 'E12_PAU')
+
+
 def fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
                           block_resolver=None, checkpoint_dir=None,
                           checkpoint_size=1000) -> CapitalHistory:
@@ -217,16 +251,7 @@ def _fetch_capital_history(prime: Prime, pins: dict[Chain, int], *,
 
     prime, covered_by_boundary = boundary_scope(prime)
     analytics_only = tuple(v.id for v, _ in eoa_boundaries(prime))
-    if prime.id == 'grove' and not any(v.id == 'E12_PAU' for v in prime.venues):
-        # Separate PAU-held NFT1352494 in the same AUSD/USDC pool. This is
-        # tracing-only: adding custody coverage must not regenerate revenues
-        # or silently introduce a zero-revenue row into settlement accounting.
-        legacy = next((v for v in prime.venues if v.id == 'E12'), None)
-        if legacy:
-            pau = replace(legacy, id='E12_PAU', notional_principal_usd=None,
-                          holder_override=Address.from_str('0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153'))
-            prime = replace(prime, venues=[*prime.venues, pau])
-            analytics_only = (*analytics_only, 'E12_PAU')
+    prime, analytics_only = with_grove_pau_tracing(prime, analytics_only)
     assets: dict[Chain, dict[tuple[str, str], Venue]] = defaultdict(dict)
     venue_accounts: dict[str, str] = {}
     unsupported: dict[str, str] = {}
