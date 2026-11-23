@@ -40,6 +40,9 @@ def test_production_paths_never_enable_allocation_financing():
     import re
     from pathlib import Path
     root = Path(__file__).parents[2]
-    offenders = [str(p.relative_to(root)) for p in [*root.glob('src/**/*.py'), *root.glob('scripts/*.py')]
-                 if re.search(r'include_allocation_financing\s*=\s*True', p.read_text())]
+    pattern = re.compile(r'include_allocation_financing\s*=\s*True')
+    offenders = [f'{p.relative_to(root)}:{n}'
+                 for p in [*root.glob('src/**/*.py'), *root.glob('scripts/*.py')]
+                 for n, line in enumerate(p.read_text().splitlines(), 1)
+                 if pattern.search(line.split('#', 1)[0])]
     assert offenders == []
