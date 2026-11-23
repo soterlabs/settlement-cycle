@@ -182,7 +182,7 @@ export default defineRailway(() => {
   // main must not restart a long replay under a different code version, so each
   // is uploaded from a clean main checkout with REVENUE_CODE_VERSION set to it.
   // settle.revenue.replay takes the prime lock per cutoff and does not start a
-  // cutoff between 16:00 and 03:00 UTC, so the 20:17 daily jobs keep priority.
+  // cutoff between 16:00 and 21:00 UTC, so the 20:17 daily jobs keep priority.
   const replayJobs = [
     ["spark", "2026-10-01", "2026-11-08"],
     ["grove", "2026-10-01", "2026-11-05"],

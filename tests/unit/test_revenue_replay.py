@@ -61,25 +61,25 @@ def test_newest_first_one_cutoff_per_lock_with_views_required():
 
 
 def test_never_starts_a_cutoff_in_the_scheduled_daily_window():
-    # 15:30 start: two 45-minute cutoffs would cross 16:00 -> the second waits until 03:00.
+    # 15:30 start: two 45-minute cutoffs would cross 16:00 -> the second waits until 21:00.
     clock_, calls, _, connect, run = harness(datetime(2026, 11, 24, 15, 30, tzinfo=UTC))
     module.replay(connect, 'grove', date(2026, 11, 1), date(2026, 11, 3), run=run,
                   now=clock_.now, sleep=clock_.sleep)
     starts = [c[3] for c in calls]
     assert starts[0] == datetime(2026, 11, 24, 15, 30, tzinfo=UTC)
-    assert starts[1] == datetime(2026, 11, 25, 3, 0, tzinfo=UTC)  # resumed after the watchdog window
-    assert starts[2] == datetime(2026, 11, 25, 3, 45, tzinfo=UTC)
+    assert starts[1] == datetime(2026, 11, 24, 21, 0, tzinfo=UTC)  # resumed after the 20:17 start
+    assert starts[2] == datetime(2026, 11, 24, 21, 45, tzinfo=UTC)
 
 
 def test_a_held_lock_is_polled_and_the_window_rechecked_between_polls():
     # The lock is busy at 15:59; the retry 30 s later falls inside the window,
-    # so the cutoff starts only at 03:00 rather than inside the daily window.
+    # so the cutoff starts only at 21:00 rather than inside the daily window.
     clock_, calls, _, connect, run = harness(datetime(2026, 11, 24, 15, 59, 40, tzinfo=UTC),
                                              {date(2026, 11, 3): 'busy_once'})
     module.replay(connect, 'spark', date(2026, 11, 3), date(2026, 11, 3), run=run,
                   now=clock_.now, sleep=clock_.sleep)
     assert [c[3] for c in calls] == [datetime(2026, 11, 24, 15, 59, 40, tzinfo=UTC),
-                                     datetime(2026, 11, 25, 3, 0, tzinfo=UTC)]
+                                     datetime(2026, 11, 24, 21, 0, tzinfo=UTC)]
 
 
 def test_failures_are_reported_and_later_cutoffs_still_run():
@@ -95,9 +95,10 @@ def test_failures_are_reported_and_later_cutoffs_still_run():
 
 
 def test_window_parsing_and_guards():
-    assert module.parse_window('16:00-03:00') == module.DEFAULT_PAUSE
-    assert module.in_window(datetime(2026, 11, 24, 2, 59, tzinfo=UTC), module.DEFAULT_PAUSE)
-    assert not module.in_window(datetime(2026, 11, 24, 3, 0, tzinfo=UTC), module.DEFAULT_PAUSE)
+    assert module.parse_window('16:00-21:00') == module.DEFAULT_PAUSE
+    assert module.in_window(datetime(2026, 11, 24, 20, 59, tzinfo=UTC), module.DEFAULT_PAUSE)
+    assert not module.in_window(datetime(2026, 11, 24, 21, 0, tzinfo=UTC), module.DEFAULT_PAUSE)
+    assert module.in_window(datetime(2026, 11, 24, 2, 0, tzinfo=UTC), module.parse_window('19:00-03:00'))
     assert module.in_window(datetime(2026, 11, 24, 12, 0, tzinfo=UTC), (clock(9), clock(17)))
     with pytest.raises(ValueError):
         module.parse_window('19:00-19:00')

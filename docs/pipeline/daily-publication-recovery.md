@@ -127,10 +127,11 @@ whole window, so the 20:17 job would report `already_running` and skip a day.
 `python -m settle.revenue.replay` instead runs the unchanged worker for one
 cutoff at a time, newest first:
 - It releases the lock between cutoffs.
-- It starts a cutoff only when the lock is free and the time is outside 16:00–03:00
+- It starts a cutoff only when the lock is free and the time is outside 16:00–21:00
   UTC, re-checking between lock polls. A worst-case Spark cutoff (three attempts
   of about 45 minutes) still finishes before the 20:17 job, which does not wait
-  for the lock.
+  for the lock. After the job has taken the lock, the replay only polls, so it
+  cannot delay the job; 21:00 leaves room for cron start jitter.
 - One failing cutoff is recorded and the next one still runs.
 - It keeps reference-rate gates, retries, immutable revisions, reuse of identical
   current revisions and the financial-reporting projection.
@@ -157,6 +158,8 @@ in `.railway/railway.ts`):
 2. Set `REVENUE_CODE_VERSION` on each service to the merged main commit.
 3. Upload from a clean checkout of exactly that commit:
    `railway up --service settle-revenue-replay-<prime>-oct2026 --detach`.
+   The committed `.railwayignore` keeps the upload under Railway's size limit.
+   It drops tests and reconciliation evidence and keeps the two files `src/` reads.
    The services have no GitHub source, so a later push does not restart a replay
    under a different code version.
 
