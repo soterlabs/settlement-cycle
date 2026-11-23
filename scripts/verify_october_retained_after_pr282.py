@@ -119,6 +119,12 @@ def replay(wallet_inputs=None):
     # Human-readable Anchorage receipt attribution only; retained MSC inputs unchanged.
     reporting_sources['src/settle/load/loan_income_display.py'] = '7f43c1dc88a75541ef71a6ac18ac8a9cdaef266f0401c673c3ec1bce8f06c24c'
     reporting_sources['src/settle/load/summary.py'] = '34b0381261040e2d2ca203927a19e899289a2f6fcdfdea07b5e15d5c8c8e33a1'
+    # PR291 stops synthesizing Grove's tracing-only E12_PAU capital account when
+    # configured venue E44 already holds that Diamond PAU NFT. The module is only
+    # reached through compute_monthly_pnl(include_allocation_financing=True),
+    # which no settlement, daily worker or API path enables; MSC revenue and
+    # borrowing formulas do not import it. Bind the exact reviewed file.
+    reporting_sources['src/settle/normalize/allocation_capital.py'] = '4d027543ab38915bb38b27037cc8e0feda3938fd73435081ef5ee33935f37073'
     for path, sha in reporting_sources.items():
         if path in changed:
             check(digest(ROOT / path) == sha, 'Unreviewed reporting source change: ' + path)
