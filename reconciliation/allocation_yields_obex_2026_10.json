@@ -1,0 +1,37 @@
+{
+  "sort": "gross_apy descending; unavailable last",
+  "method": "(1 + period revenue / average exposure) ** (365 / days) - 1",
+  "net_definition": "Prime-retained venue revenue minus modeled allocation borrowing costs; excludes Prime-level adjustments/spread reimbursements.",
+  "results": [
+    {
+      "prime": "obex",
+      "start": "2026-10-01",
+      "end": "2026-10-31",
+      "allocations": [
+        {
+          "venue": "V1",
+          "label": "Maple syrupUSDC (Category B \u2014 ERC-4626 vault)",
+          "cost_status": "calculable_under_assumption",
+          "cost_of_funds": "1292281.788680026616526840593",
+          "gross_apy": "0.051486141425468087584996586464078916991",
+          "net_apy": "0.012951359166146069551488028429057389635",
+          "average_exposure": "406437126.8947680924704516129",
+          "denominator": "published time-weighted position value",
+          "yield_status": "available",
+          "gross_revenue": "1736726.35662310074800",
+          "prime_retained_revenue": "1736726.35662310074800",
+          "spread_reimbursement_not_in_venue_net": "0",
+          "net_pnl": "444444.567943074131473159407"
+        }
+      ]
+    }
+  ],
+  "input_sha256": {
+    "reconciliation/allocation_capital_readiness_obex_2026_10.json.gz": "f4dea8ba38d26920b3ea75e6b821a2e1ff3101259fc39468c8a3678faf3001ca",
+    "reconciliation/monthly-allocation-controls/obex/2026-10/provenance.json": "4e89d2bba232299237c9844af494d70488f06ae1d294dd329000373c634ea212"
+  },
+  "source_sha256": {
+    "/data/sc-oct/scripts/report_allocation_yields.py": "703ed7f237e8a28ec0b08db9142c900569daf835b0f7398242003053a94f4726",
+    "src/settle/compute/allocation_financing.py": "9046670c3856e506c2a647290474a108b60bbf8b189e5e644a0af6e5e211a80a"
+  }
+}
