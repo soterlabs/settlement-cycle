@@ -9,7 +9,11 @@ or settlement code changes, and no published settlement amount is restated.
 
 `reconciliation/monthly-allocation-controls/{prime}/2026-10/provenance.json` are
 byte-identical copies of the finalized October close provenance (#275). Their
-SHA-256 values equal `output_sha256` in that close's `finalization.json`.
+SHA-256 values equal `output_sha256` in the committed
+`reconciliation/2026-10/finalization.json`, and a test enforces this. Earlier local
+finalization runs differ only in MSC instruction adjustments (the Grove partner
+rebate and the Spark historical Sky adjustment). Venue revenue, daily rates and
+block pins are the same, but those earlier runs are not used.
 Each control matches the published `prime_msc_preview.json` row: prime-retained
 revenue less the net borrowing charge equals `ordinary_supply_net`, and Sky revenue
 equals `sky_ordinary_total`. The published summaries and workbooks match the
@@ -18,8 +22,8 @@ recalculated here.
 
 | Prime | SHA-256 (provenance) |
 |---|---|
-| Spark | `a9ead935…0724` |
-| Grove | `21c244d8…a28b` |
+| Spark | `de6b6b41…cfe9` |
+| Grove | `66e50bb0…437d` |
 | Obex | `4e89d2bb…a212` |
 | Osero | `9f8779b0…ff8e` |
 
@@ -91,9 +95,15 @@ global charge, and the remainder is not distributed to a venue:
   September's difference was $40,427.17. As in September, MSC debt without
   invested proceeds and gains carried in NAV account for the gap.
 
-O3 opens at zero shares and enters on October deposits, so its average principal
-($2.94m) is well below its closing principal ($5.00m). Yields use the published
-time-weighted position value.
+O3 opens at zero shares. A $1.0m deposit on October 12 was fully withdrawn on
+October 13, and $5.0m has been held since October 14. Its average principal
+($2.94m) is therefore well below its closing principal ($5.00m). Yields use the
+published time-weighted position value ($2.94m).
+
+O2 held only dust (about $0.40 on average, versus zero in September). Its
+exposure is positive and its revenue is a true zero, so the existing rules
+publish it as `available` with 0.00% APYs rather than `no_positive_exposure`.
+The cost is the known exemption ($0.00), not missing data.
 
 An independent Decimal check recomputes every field from the control's
 `venue_breakdown` and the document's cost and exposure: gross revenue, retained

@@ -58,7 +58,7 @@
       "ref_code": "2002"
     }
   ],
-  "generated_at_utc": "2026-11-11T17:35:11+00:00",
+  "generated_at_utc": "2026-11-12T01:31:19+00:00",
   "month": "2026-10",
   "period": {
     "end": "2026-10-31",
@@ -3997,17 +3997,114 @@
     "sky": "5682959.319885517888970951078",
     "dv": "122862.6499862163417263841036",
     "sv": "1225694.878304368896498431589",
-    "sky_adj": "1030726.24",
+    "sky_adj": "1135869.94",
     "dv_adj": "0",
-    "sv_adj": "927411.94",
+    "sv_adj": "822268.24",
     "send_credit": "0",
     "mint": "8866792",
-    "send": "2275969",
+    "send": "2170826",
     "derived_mint": "8866792.378189886785469382667",
-    "derived_send": "2275969.468290585238224815693"
+    "derived_send": "2170825.768290585238224815693"
   },
   "msc_instruction_sources": {
-    "historical_ledger_sha256": "fdc0c8eb9bce6bd4632cc3038297625ac9a77462a9b973023912b2e699574904",
-    "sky_total_config_sha256": "a233c35e12d260129c09cf8f49966a6d7d3ec6f6f034c2e5811ce352e2a59e51"
+    "historical_ledger_sha256": "a41d6931afbbc68aa02c02131930ce675c67c7abf120e285770b38ee67211c10",
+    "sky_total_config_sha256": "3982cf1e020c7af29da2b80548eb5c8b56bbcce0253b62c7cf19b867737291e6"
+  },
+  "partner_rebate": {
+    "status": "operator_approved",
+    "settlement_month": "2026-10",
+    "label": "partner rebate",
+    "method": "Invoice net allocated by on-chain gross weights; all JTRSY to Sky",
+    "rows": [
+      {
+        "label": "partner rebate",
+        "fund": "JAAA",
+        "year": "2025",
+        "onchain_gross": "527734.181675056400568893260920821917808219178082191780821922",
+        "sky_gross": "74794.5205479452054794520547945205479452054794520547945205477",
+        "net": "413320.00",
+        "sky": "58578.87",
+        "grove": "354741.13"
+      },
+      {
+        "label": "partner rebate",
+        "fund": "JAAA",
+        "year": "2026",
+        "onchain_gross": "583106.120363883477894313371232328767123287671232876712328773",
+        "sky_gross": "119315.068493150684931506849315068493150684931506849315068495",
+        "net": "573276.00",
+        "sky": "117303.63",
+        "grove": "455972.37"
+      },
+      {
+        "label": "partner rebate",
+        "fund": "JTRSY",
+        "year": "2025",
+        "onchain_gross": "504339.148364645496658216136926095890410958904109589041095892",
+        "sky_gross": "504339.148364645496658216136926095890410958904109589041095892",
+        "net": "356999.00",
+        "sky": "356999.00",
+        "grove": "0.00"
+      },
+      {
+        "label": "partner rebate",
+        "fund": "JTRSY",
+        "year": "2026",
+        "onchain_gross": "727975.463119899654835611136800410958904109589041095890410960",
+        "sky_gross": "727975.463119899654835611136800410958904109589041095890410960",
+        "net": "713408.00",
+        "sky": "713408.00",
+        "grove": "0.00"
+      }
+    ],
+    "sky": {
+      "total": "1246289.50"
+    },
+    "grove": {
+      "total": "810713.50"
+    },
+    "total_received": "2057003.00",
+    "receipts": [
+      {
+        "date": "2026-10-21",
+        "asset": "JTRSY",
+        "amount": "499999.00",
+        "tx": "0xfab28754e744c765c4341a8fe8965633d0ca1d07d44c0d1cef9e8e6dacc1a1c0"
+      },
+      {
+        "date": "2026-10-21",
+        "asset": "JTRSY",
+        "amount": "499999.00",
+        "tx": "0x197ae1778433c69c7a0221d90c5a4156deb04388f48e4dcded62bff0e422e9bf"
+      },
+      {
+        "date": "2026-10-21",
+        "asset": "JTRSY",
+        "amount": "70409.00",
+        "tx": "0x54635685a4f35964ce3bc481dbf5ecfff37a063104fdc21e6454ccd89aefcde1"
+      },
+      {
+        "date": "2026-10-20",
+        "asset": "JAAA",
+        "amount": "486585.00",
+        "tx": "0xaec0b9998e544c3d0e9fda29c131fd1d76a74cd57abe64833e882d7cb865312f"
+      },
+      {
+        "date": "2026-10-20",
+        "asset": "JAAA",
+        "amount": "499999.00",
+        "tx": "0xdcddbd1ab94b3a27543f30cc1a729fcbdd1223c9088464c79d73f97ccfb38930"
+      },
+      {
+        "date": "2026-10-20",
+        "asset": "JAAA",
+        "amount": "12.00",
+        "tx": "0xb907cd9cb470238fc5a06475cdaddcdd8bbf37f88bb2ee53a05b37cb90a3d115"
+      }
+    ],
+    "input_sha256": {
+      "partner-rebate-inputs.json": "7f06ed061ebec11f2b1cb1154d8ec1350665a95fff1cf5b25a5d90212c5b5e6d",
+      "partner-rebate-daily.json": "195a079db359ba8d7bf3cf69970a5504444173a93ca3e4b443f38dc42cb57cc2"
+    }
   }
 }

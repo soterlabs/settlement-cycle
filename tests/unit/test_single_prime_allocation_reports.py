@@ -146,3 +146,13 @@ def test_october_frozen_inputs_reproduce_published_candidate(prime):
     # difference is reported, never pushed onto a venue.
     total = sum((D(r['cost_of_funds']) for r in computed['allocations']), D(0))
     assert D(control['results']['sky_revenue']) > total
+
+
+@pytest.mark.parametrize('prime', ['spark', 'grove', 'obex', 'osero'])
+def test_october_controls_are_the_committed_close(prime):
+    """Analytics must use the provenance the published October report used,
+    not an earlier local finalization with different MSC adjustments."""
+    finalization = json.loads(Path('reconciliation/2026-10/finalization.json').read_text())
+    control = Path('reconciliation/monthly-allocation-controls') / prime / '2026-10/provenance.json'
+    assert hashlib.sha256(control.read_bytes()).hexdigest() == \
+        finalization['output_sha256'][f'settlements/{prime}/2026-10/provenance.json']
