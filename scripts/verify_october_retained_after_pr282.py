@@ -127,7 +127,7 @@ def replay(wallet_inputs=None):
     reporting_sources['src/settle/normalize/allocation_capital.py'] = '4d027543ab38915bb38b27037cc8e0feda3938fd73435081ef5ee33935f37073'
     # Operational driver that re-runs the unchanged daily worker one cutoff at a
     # time for stale observations; no settlement computation imports it.
-    reporting_sources['src/settle/revenue/replay.py'] = 'a4dc48f24c98fe69469eea6fc3946e4591261076f96ebb62f2326a739177e3af'
+    reporting_sources['src/settle/revenue/replay.py'] = '6925fd76dfd4dd7b59251d243dc78603d672bd0eb8b99c6b587b7d6697f98346'
     for path, sha in reporting_sources.items():
         if path in changed:
             check(digest(ROOT / path) == sha, 'Unreviewed reporting source change: ' + path)

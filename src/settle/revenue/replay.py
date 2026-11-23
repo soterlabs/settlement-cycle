@@ -9,9 +9,11 @@ advisory lock for the whole window, which would make the scheduled 20:17 UTC
 job report ``already_running`` and skip that day's publication.
 
 This driver instead calls :func:`settle.revenue.worker.run_prime` for one cutoff
-at a time, newest first, releasing the lock after each, and does not START a
-cutoff inside the scheduled daily window (default 19:00-03:00 UTC, covering the
-20:17 start and its six-hour watchdog). Each cutoff keeps the worker's existing
+at a time, newest first, releasing the lock after each. It only starts a cutoff
+when the prime lock is free AND it is outside the pause window (default
+16:00-03:00 UTC): a worst-case Spark cutoff (three attempts of ~45 minutes)
+started at 15:59 still releases the lock before the 20:17 job, which runs
+without waiting for the lock, and nothing starts before its six-hour watchdog. Each cutoff keeps the worker's existing
 behaviour: reference-rate gates, bounded retries, immutable append-only
 revisions, reuse of an identical current revision, required venue views and
 financial-reporting projection. Nothing is deleted or rewritten.
@@ -32,7 +34,8 @@ from datetime import time as clock
 from .worker import deadline, run_prime
 
 _log = logging.getLogger(__name__)
-DEFAULT_PAUSE = (clock(19, 0), clock(3, 0))
+DEFAULT_PAUSE = (clock(16, 0), clock(3, 0))
+LOCK_POLL_SECONDS = 30
 
 
 def parse_window(text):
@@ -68,12 +71,28 @@ def replay(connect, prime, start, end, *, window=DEFAULT_PAUSE, run=run_prime,
     reports = []
     cutoff = end
     while cutoff >= start:
-        while (wait := seconds_until_open(now(), window)) > 0:
-            _log.info('replay paused for the scheduled daily window prime=%s next=%s', prime, cutoff)
-            sleep(min(wait, 300))
-        with connect() as conn:
-            report = run(conn, prime, start=cutoff, end=cutoff, require_views=True,
-                         wait_for_lock=True, now=now())
+        while True:
+            if (wait := seconds_until_open(now(), window)) > 0:
+                _log.info('replay paused for the scheduled daily window prime=%s next=%s', prime, cutoff)
+                sleep(min(wait, 300))
+                continue
+            try:
+                # Never wait inside the worker for the lock: a wait could end
+                # inside the pause window. Re-check the window between polls.
+                with connect() as conn:
+                    report = run(conn, prime, start=cutoff, end=cutoff, require_views=True,
+                                 wait_for_lock=False, now=now())
+            except Exception as exc:  # keep going; one bad cutoff must not end the replay
+                report = {'prime': prime, 'status': 'failed',
+                          'results': [{'cutoff': str(cutoff), 'status': 'failed',
+                                       'error_type': type(exc).__name__}]}
+                _log.error('ALERT replay failure prime=%s cutoff=%s error=%s', prime, cutoff,
+                           type(exc).__name__)
+            if report['status'] == 'already_running':
+                _log.info('replay waiting for the prime lock prime=%s next=%s', prime, cutoff)
+                sleep(LOCK_POLL_SECONDS)
+                continue
+            break
         reports.append(report)
         _log.info('replay cutoff prime=%s cutoff=%s report=%s', prime, cutoff, json.dumps(report))
         cutoff -= timedelta(days=1)
@@ -96,10 +115,14 @@ def main():
     parser.add_argument('--from', dest='start', type=date.fromisoformat, required=True)
     parser.add_argument('--to', dest='end', type=date.fromisoformat, required=True)
     parser.add_argument('--pause-utc', type=parse_window, default=DEFAULT_PAUSE,
-                        help='Do not start a cutoff in this UTC window (default 19:00-03:00)')
+                        help='Do not start a cutoff in this UTC window (default 16:00-03:00)')
     args = parser.parse_args()
     os.environ['SETTLE_REQUIRE_POSTGRES'] = '1'
     logging.basicConfig(level=logging.INFO)
+    # Fail fast: without a resolvable code version (REVENUE_CODE_VERSION in an
+    # image without .git) every cutoff would fail after three attempts.
+    from .store import capture_versions
+    _log.info('replay code version %s', capture_versions().code)
     summary = replay(lambda: connect(autocommit=True), args.prime, args.start, args.end,
                      window=args.pause_utc)
     print(json.dumps(summary), flush=True)

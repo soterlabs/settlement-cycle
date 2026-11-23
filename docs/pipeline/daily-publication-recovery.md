@@ -117,7 +117,7 @@ those October month-to-date figures silently understated revenue:
 | --- | --- | --- |
 | Grove | Oct 1 – Nov 5 | E43 Steakhouse USDC Base ($1,298,008), E44 Diamond PAU LP ($4,146) |
 | Osero | Oct 1 – Nov 10 | O3 Gauntlet USDC Prime ($10,607) |
-| Spark | Oct 1 – Nov 8 | S64, S70, S72 absent. S32 MTD is −$109.47m from Oct 29: the 100m-share sUSDS transfer to the SubProxy was booked as a loss before #275's holder-net capital method (settled S32: +$1,983,181) |
+| Spark | Oct 1 – Nov 8 | S70 and S71 absent through Nov 1, and S72 through Nov 8. S64 present at $0. S32 MTD is −$109.57m on Oct 29 and −$109.47m on Oct 31: the 100m-share sUSDS transfer to the SubProxy was booked as a loss before #275's holder-net capital method (settled S32: +$1,983,181) |
 
 Obex, Keel and Skybase observations already include every current venue.
 
@@ -127,9 +127,21 @@ whole window, so the 20:17 job would report `already_running` and skip a day.
 `python -m settle.revenue.replay` instead runs the unchanged worker for one
 cutoff at a time, newest first:
 - It releases the lock between cutoffs.
-- It does not start a cutoff between 19:00 and 03:00 UTC.
+- It starts a cutoff only when the lock is free and the time is outside 16:00–03:00
+  UTC, re-checking between lock polls. A worst-case Spark cutoff (three attempts
+  of about 45 minutes) still finishes before the 20:17 job, which does not wait
+  for the lock.
+- One failing cutoff is recorded and the next one still runs.
 - It keeps reference-rate gates, retries, immutable revisions, reuse of identical
   current revisions and the financial-reporting projection.
+- It exits immediately if no code version can be resolved.
+
+While a replay runs, `/v1/revenue/status` `latest_attempt` can show an old
+replayed cutoff. The completion monitor ignores attempts older than the due
+cutoff, so a replay cannot raise a false alarm. However, a replay attempt that
+starts after a failed daily attempt hides that failure from the monitor's
+latest-attempt check. In that window, check the services' logs and
+`actual_cutoff`, which the monitor still enforces.
 
 Run one unscheduled Railway service per prime (`settle-revenue-replay-<prime>-oct2026`
 in `.railway/railway.ts`):
