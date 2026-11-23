@@ -25,3 +25,10 @@ def test_tracing_row_is_still_added_without_a_configured_pau_venue():
     # Other primes are untouched.
     osero = load_prime_by_id('osero')
     assert with_grove_pau_tracing(osero, ()) == (osero, ())
+
+
+def test_a_skipped_pau_venue_does_not_suppress_tracing():
+    grove = load_prime_by_id('grove')
+    skipped = replace(grove, venues=[replace(v, skip=True) if v.id == 'E44' else v for v in grove.venues])
+    prime, _ = with_grove_pau_tracing(skipped, ())
+    assert any(v.id == 'E12_PAU' for v in prime.venues)

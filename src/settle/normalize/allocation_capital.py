@@ -183,7 +183,9 @@ GROVE_DIAMOND_PAU = Address.from_str('0x0dcd9298e163dfd3c0b5b00f0d9093c36e40a153
 def _same_lp_custody(venue, holder) -> bool:
     """A configured Uniswap V3 venue held at ``holder`` in Grove's E12 pool."""
     return (
-        getattr(venue, 'lp_kind', None) == 'uniswap_v3'
+        # A skipped venue is not captured, so it cannot own the NFT's capital.
+        not getattr(venue, 'skip', False)
+        and getattr(venue, 'lp_kind', None) == 'uniswap_v3'
         and getattr(venue, 'holder_override', None) == holder
         and str(getattr(getattr(venue, 'token', None), 'address', '')).lower()
         == '0xbafead7c60ea473758ed6c6021505e8bbd7e8e5d'

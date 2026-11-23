@@ -149,7 +149,9 @@ the PAU idle-cash rows change by less than one cent.
 | E27 | USDC raw on Base (ALM idle) | $14,970.74 | $50.01 | 0.00% | -3.86% |
 
 The other 30 rows break down as follows:
-- **9** have no principal in the period.
+- **10** have no principal in the period.
+- **4** are dust rows with both yields available (E1, E2, E3, E6). They are
+  excluded from the table above because their average exposure is under $1,000.
 - **1** is exempt idle USDS.
 - **8** are covered by a boundary (the E36 Monad relay; the JTRSY Basin escrow is
   covered by `E_JTRSY_BASIN`).
