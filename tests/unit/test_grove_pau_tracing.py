@@ -32,3 +32,14 @@ def test_a_skipped_pau_venue_does_not_suppress_tracing():
     skipped = replace(grove, venues=[replace(v, skip=True) if v.id == 'E44' else v for v in grove.venues])
     prime, _ = with_grove_pau_tracing(skipped, ())
     assert any(v.id == 'E12_PAU' for v in prime.venues)
+
+
+def test_production_paths_never_enable_allocation_financing():
+    """The October source seal allows allocation_capital.py changes because no
+    settlement, daily or API path computes allocation financing. Keep it so."""
+    import re
+    from pathlib import Path
+    root = Path(__file__).parents[2]
+    offenders = [str(p.relative_to(root)) for p in [*root.glob('src/**/*.py'), *root.glob('scripts/*.py')]
+                 if re.search(r'include_allocation_financing\s*=\s*True', p.read_text())]
+    assert offenders == []
