@@ -106,3 +106,66 @@ def test_september_frozen_inputs_reproduce_published_candidate(prime):
     # Global financing and original-capital costs intentionally remain distinct.
     total = sum((D(r['cost_of_funds']) for r in frozen['allocations']), D(0))
     assert D(control['results']['sky_revenue']) > total
+
+
+@pytest.mark.parametrize('prime,adapters', [('osero', False), ('obex', False), ('grove', True)])
+def test_october_frozen_inputs_reproduce_published_candidate(prime, adapters):
+    """October artifacts recompute exactly from the committed inputs and the
+    finalized October close (settlement-cycle #275), and their yields stay
+    consistent with that close's venue revenue."""
+    from settle.normalize.allocation_history_cache import load_history
+    root = Path('reconciliation/monthly-allocation-inputs') / prime / '2026-10'
+    history_path = root / 'history.jsonl.gz'
+    with gzip.open(history_path, 'rt') as f:
+        key = json.loads(next(f))['fingerprint']
+    history = load_history(history_path, key)
+    control_path = Path('reconciliation/monthly-allocation-controls') / prime / '2026-10/provenance.json'
+    control = json.loads(control_path.read_text())
+    assert (control['prime_id'], control['period']['start'], control['period']['end']) == (
+        prime, '2026-10-01', '2026-10-31')
+    idle = json.loads((root / 'idle_deductions.json').read_text())
+    assert idle['control_sha256'] == hashlib.sha256(control_path.read_bytes()).hexdigest()
+    capital.validate_history_manifest(json.loads((root / 'pins.json').read_text()), prime=prime,
+        end=date(2026, 10, 31), control=control, history_sha256=hashlib.sha256(history_path.read_bytes()).hexdigest())
+    if adapters:
+        # Grove's fresh capture needs the reviewed executed-spell adapters.
+        from settle.compute.executed_spell_capital import apply_executed_spells
+        history = apply_executed_spells(history)
+    computed = capital.report(prime, history, control, idle, date(2026, 10, 1), date(2026, 10, 31))
+    saved = json.loads(gzip.decompress(Path(f'reconciliation/allocation_capital_readiness_{prime}_2026_10.json.gz').read_bytes()))
+    assert saved['results'] == [computed]
+    # The Diamond PAU NFT is carried once, by its configured venue (E44).
+    assert 'E12_PAU' not in {r['venue'] for r in computed['allocations']}
+    # Every venue with October settlement revenue has an allocation row.
+    assert {v['venue_id'] for v in control['venue_breakdown']} <= {r['venue'] for r in computed['allocations']}
+    candidate = json.loads(Path(f'reconciliation/allocation_yields_{prime}_2026_10.json').read_text())
+    assert yields.build(saved, {prime: control})['results'] == candidate['results']
+    documents = prepare(Path(f'reconciliation/allocation_capital_readiness_{prime}_2026_10.json.gz'),
+                        Path(f'reconciliation/allocation_yields_{prime}_2026_10.json'))
+    revenue = {v['venue_id']: v for v in control['venue_breakdown']}
+    for row in documents[0]['allocations']:
+        v = revenue.get(row['venue_id'])
+        if v is None or row['gross_revenue_usd'] is None:
+            # Custody/boundary rows without a revenue line keep null revenue.
+            assert row['net_pnl_usd'] is None and row['gross_apy'] is None
+            continue
+        assert D(row['gross_revenue_usd']) == D(v['actual_revenue']) + D(v['external_revenue'])
+        assert D(row['prime_retained_revenue_usd']) == D(v['revenue'])
+        if row['borrowing_cost_usd'] is None:
+            assert row['net_pnl_usd'] is None and row['net_apy'] is None
+        else:
+            assert D(row['net_pnl_usd']) == D(row['prime_retained_revenue_usd']) - D(row['borrowing_cost_usd'])
+    # Original-capital allocation costs stay below the global charge; the
+    # difference is reported, never pushed onto a venue.
+    total = sum((D(r['cost_of_funds']) for r in computed['allocations'] if r['cost_of_funds'] is not None), D(0))
+    assert D(control['results']['sky_revenue']) > total
+
+
+@pytest.mark.parametrize('prime', ['spark', 'grove', 'obex', 'osero'])
+def test_october_controls_are_the_committed_close(prime):
+    """Analytics must use the provenance the published October report used,
+    not an earlier local finalization with different MSC adjustments."""
+    finalization = json.loads(Path('reconciliation/2026-10/finalization.json').read_text())
+    control = Path('reconciliation/monthly-allocation-controls') / prime / '2026-10/provenance.json'
+    assert hashlib.sha256(control.read_bytes()).hexdigest() == \
+        finalization['output_sha256'][f'settlements/{prime}/2026-10/provenance.json']

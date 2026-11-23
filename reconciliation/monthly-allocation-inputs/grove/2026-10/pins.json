@@ -1,0 +1,13 @@
+{
+  "prime": "grove",
+  "start": "2026-10-01",
+  "end": "2026-10-31",
+  "pins": {
+    "avalanche_c": 99082938,
+    "base": 53350926,
+    "ethereum": 26316188,
+    "monad": 118321696,
+    "plume": 102924353
+  },
+  "history_sha256": "fef2a5a6d848470be322ed9495717224ca50dcdcb1723fc61cc92e16b9389527"
+}

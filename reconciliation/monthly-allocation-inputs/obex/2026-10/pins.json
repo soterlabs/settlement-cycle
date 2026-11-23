@@ -1,0 +1,9 @@
+{
+  "prime": "obex",
+  "start": "2026-10-01",
+  "end": "2026-10-31",
+  "pins": {
+    "ethereum": 26316188
+  },
+  "history_sha256": "2231c965d8ac59de655aa2c78c84c124aaf4cc059293d505e1aab689921b871f"
+}
