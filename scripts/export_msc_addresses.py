@@ -122,6 +122,9 @@ def build_rows(config_dir: Path) -> list[dict[str, str]]:
         for name, d in documents.items()
         if isinstance(d, dict) and "addresses" in d and "id" in d
     }
+    if not primes:
+        raise ValueError(f"No Prime configurations found in {config_dir}")
+    prime_by_id = {d["id"]: d for d in primes.values()}
     venues = {(d["id"], v["id"]): v for d in primes.values() for v in d.get("venues", [])}
     rows = []
 
@@ -221,6 +224,7 @@ def build_rows(config_dir: Path) -> list[dict[str, str]]:
             if key not in venues:
                 raise ValueError(f"Unknown supplementary venue: {name}:{key}")
             venue = venues[key]
+            parent = prime_by_id[entry["prime"]]
             context = dict(
                 prime=entry["prime"],
                 venue_id=entry["venue_id"],
@@ -231,8 +235,12 @@ def build_rows(config_dir: Path) -> list[dict[str, str]]:
                 reporting_enabled=_parse_view(venue, "reporting").enabled,
                 skip_position=venue.get("skip", False),
                 settlement_method=venue.get("settlement", {}).get("method", "existing"),
-                start_date=venue.get("start_date", ""),
-                end_date=venue.get("end_date", ""),
+                start_date=max(
+                    str(parent.get("start_date") or ""), str(venue.get("start_date") or "")
+                ),
+                end_date=min(
+                    (str(d["end_date"]) for d in (parent, venue) if d.get("end_date")), default=""
+                ),
             )
             walk(entry, f"venues[{index}]", context, "config/" + name)
     return sorted(

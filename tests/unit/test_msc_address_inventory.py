@@ -128,3 +128,60 @@ def test_payer_activation_uses_normalized_address(tmp_path):
     assert (
         next(r for r in rows if r["role"] == "external_yield_source")["start_date"] == "2026-09-01"
     )
+
+
+@pytest.mark.parametrize("missing", [False, True])
+def test_empty_or_missing_config_cannot_replace_inventory(tmp_path, missing):
+    import subprocess
+    import sys
+
+    output = tmp_path / "inventory.csv"
+    output.write_text("existing inventory\n")
+    config = tmp_path / "missing" if missing else tmp_path
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/export_msc_addresses.py"),
+            "--config-dir",
+            str(config),
+            "--output",
+            str(output),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "No Prime configurations" in result.stderr
+    assert output.read_text() == "existing inventory\n"
+
+
+def test_supplement_inherits_parent_and_venue_date_bounds(tmp_path):
+    write_config(
+        tmp_path,
+        {
+            "id": "V1",
+            "label": "Venue",
+            "chain": "ethereum",
+            "end_date": "2026-09-30",
+            "token": {"address": "0x" + "11" * 20},
+        },
+    )
+    (tmp_path / "redemptions.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "venues": [
+                    {
+                        "prime": "test",
+                        "venue_id": "V1",
+                        "cash_payer": "0x" + "22" * 20,
+                        "start_date": "2025-01-01",
+                        "end_date": "2026-12-31",
+                    }
+                ]
+            }
+        )
+    )
+    rows = export.build_rows(tmp_path)
+    payer = next(r for r in rows if r["role"] == "redemption_payer")
+    assert payer["start_date"] == "2026-01-01"
+    assert payer["end_date"] == "2026-09-30"
