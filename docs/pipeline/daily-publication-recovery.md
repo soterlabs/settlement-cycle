@@ -167,3 +167,7 @@ Progress is visible in each service's logs and in `revenue_attempts`. Verify the
 results through `/v1/revenue/<prime>/history` (current venues present, Spark S32
 corrected) rather than from the launch alone. Replayed revisions are also
 projected to the financial reporting API by the worker's existing hook.
+
+## Automation
+
+Failed or missing days are now retried nightly by `settle-revenue-catchup`, and manual replays are queued with `scripts/request_revenue_replay.py` instead of one-off Railway services. See [railway-automation.md](railway-automation.md).
