@@ -17,7 +17,8 @@ New months need no change: the daily worker starts a new month-to-date on the
 For each prime, a completed day of the last `CATCHUP_DAYS` (14) is retried when
 it has no published revision, or when its latest attempt is `failed` or
 `abandoned`. A day whose latest attempt is still `running` is left to its owner,
-and each day is re-checked just before its retry. Retries go through
+and each day is re-checked while holding the prime's lock, so a day the 20:17
+worker published in the meantime is skipped. Retries go through
 `settle.revenue.replay`: one cutoff per prime lock, newest first, never started
 16:00–21:00 UTC, with the worker's reference-rate deferral, bounded attempts and
 immutable revisions. A day that was published normally is **never** recomputed
@@ -33,7 +34,7 @@ catch-up run executes it on Railway:
     python scripts/request_revenue_replay.py --prime spark --from 2026-11-01 --to 2026-11-10 \
         --reason "S73 added to Spark config"
     python scripts/request_revenue_replay.py --list
-    python scripts/request_revenue_replay.py --cancel <id>      # pending requests only
+    python scripts/request_revenue_replay.py --cancel <id>      # a running request stops before its next cutoff
 
 The request is a row in `revenue_replay_requests`. Progress (`next_cutoff`) is
 recorded after every cutoff, so a request cut off by the job's 15-hour deadline

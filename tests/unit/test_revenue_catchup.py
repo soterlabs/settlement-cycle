@@ -35,9 +35,25 @@ def test_window_is_completed_days_only():
         catchup.targets(set(), {}, TODAY, 0)
 
 
+class LockConn:
+    """Records advisory lock calls; ``busy`` makes pg_try_advisory_lock fail."""
+
+    def __init__(self, log, busy=False):
+        self.log, self.busy = log, busy
+
+    def execute(self, sql, params=None):
+        self.log.append(sql.split('(')[0].split()[-1])
+        busy = self.busy
+
+        class Result:
+            def fetchone(_):
+                return (not busy,)
+        return Result()
+
+
 def harness(monkeypatch, states):
-    """states: list of (published, latest) returned by successive load_state calls."""
-    calls, replays = [], []
+    """states: (published, latest) returned by successive load_state calls."""
+    calls, worked, locks = [], [], []
 
     @contextmanager
     def connect():
@@ -47,54 +63,84 @@ def harness(monkeypatch, states):
         calls.append((prime, first, last))
         return states.pop(0)
 
-    def replay(connect_, prime, start, end):
-        assert start == end
-        replays.append((prime, start))
-        failed = [{'cutoff': str(start), 'status': 'failed'}] if start == d(20) else []
-        return {'failed': failed}
+    def worker(conn, prime, *, start, end, **kwargs):
+        worked.append((prime, start))
+        status = 'failed' if start == d(20) else 'succeeded'
+        return {'prime': prime, 'status': 'ok', 'results': [{'cutoff': str(start), 'status': status}]}
+
+    def replay(connect_, prime, start, end, run):
+        # The real driver: one cutoff, run(conn, prime, start=, end=, ...) under a fresh session.
+        report = run(LockConn(locks), prime, start=start, end=end, require_views=True, wait_for_lock=False,
+                     now=None)
+        results = report['results']
+        return {'counts': {r['status']: 1 for r in results},
+                'failed': [r for r in results if r['status'] == 'failed']}
 
     monkeypatch.setattr(catchup, 'load_state', load_state)
-    return connect, replay, calls, replays
+    return connect, replay, worker, calls, worked, locks
 
 
-def test_rechecks_each_cutoff_and_reports_failures(monkeypatch):
+def test_rechecks_each_cutoff_under_the_prime_lock(monkeypatch):
     planning = ({d(day) for day in range(10, 24)} - {d(20), d(22)}, {d(22): 'failed'})
     states = [planning,
-              ({d(22)}, {d(22): 'succeeded'}),  # published since planning
-              (set(), {})]  # 20 still missing
-    connect, replay, calls, replays = harness(monkeypatch, states)
-    reports = catchup.catch_up(connect, ['spark'], TODAY, 14, replay=replay)
-    assert calls[0] == ('spark', d(10), d(23))
-    assert replays == [('spark', d(20))]
+              ({d(22)}, {d(22): 'succeeded'}),  # the 20:17 worker published it while we waited
+              (set(), {})]                      # 20 still missing
+    connect, replay, worker, calls, worked, locks = harness(monkeypatch, states)
+    reports = catchup.catch_up(connect, ['spark'], TODAY, 14, replay=replay, worker=worker)
+    assert calls == [('spark', d(10), d(23)), ('spark', d(22), d(22)), ('spark', d(20), d(20))]
+    assert worked == [('spark', d(20))]
+    assert locks == ['pg_try_advisory_lock', 'pg_advisory_unlock'] * 2  # checked while holding the lock
     assert reports == [{'prime': 'spark', 'status': 'failed', 'planned': ['2026-11-22', '2026-11-20'],
                         'skipped': ['2026-11-22'], 'failed': [{'cutoff': '2026-11-20', 'status': 'failed'}]}]
 
 
+def test_guarded_run_waits_when_the_prime_lock_is_held(monkeypatch):
+    monkeypatch.setattr(catchup, 'load_state', lambda *a: pytest.fail('must not read state without the lock'))
+    log = []
+    report = catchup.guarded_run(LockConn(log, busy=True), 'spark', start=d(20), end=d(20),
+                                 run=lambda *a, **k: pytest.fail('must not run'))
+    assert report['status'] == 'already_running' and log == ['pg_try_advisory_lock']
+    with pytest.raises(ValueError):
+        catchup.guarded_run(LockConn(log), 'spark', start=d(19), end=d(20), run=None)
+
+
 def test_dry_run_and_nothing_to_do_never_replay(monkeypatch):
     full = ({d(day) for day in range(10, 24)}, {})
-    connect, replay, _, replays = harness(monkeypatch, [full, (set(), {})])
-    reports = catchup.catch_up(connect, ['grove', 'osero'], TODAY, 14, replay=replay, dry_run=True)
-    assert replays == []
+    connect, replay, worker, _, worked, _ = harness(monkeypatch, [full, (set(), {})])
+    reports = catchup.catch_up(connect, ['grove', 'osero'], TODAY, 14, replay=replay, dry_run=True,
+                               worker=worker)
+    assert worked == []
     assert reports == [{'prime': 'grove', 'status': 'ok', 'planned': []},
                        {'prime': 'osero', 'status': 'ok', 'planned': [str(d(day)) for day in range(23, 9, -1)]}]
 
 
 class RequestConn:
+    """Fake queue: ``statuses`` answers successive status re-checks (default 'running')."""
+
     def __init__(self, db):
         self.db = db
 
     def execute(self, sql, params=None):
         sql = ' '.join(sql.split())
         self.db['log'].append((sql[:50], params))
+        db = self.db
 
         class Result:
             def fetchall(_):
-                return self.db['pending'] if sql.startswith('SELECT request_id') else []
+                return db['pending'] if sql.startswith('SELECT request_id') else []
+
+            def fetchone(_):
+                if sql.startswith('UPDATE revenue_replay_requests SET status=\'running\''):
+                    return (params[0],) if db.get('claimable', True) else None
+                if sql.startswith('SELECT status'):
+                    return (db['statuses'].pop(0) if db.get('statuses') else 'running',)
+                return None
         return Result()
 
 
-def test_requests_resume_from_progress_and_record_failures():
-    db = {'log': [], 'pending': [(7, 'spark', d(1), d(4), d(2), [{'cutoff': '2026-11-03', 'status': 'failed'}])]}
+def requests_harness(**db):
+    db = {'log': [], 'pending': [(7, 'spark', d(1), d(4), d(2), [{'cutoff': '2026-11-03', 'status': 'failed'}])],
+          **db}
 
     @contextmanager
     def connect():
@@ -108,13 +154,30 @@ def test_requests_resume_from_progress_and_record_failures():
             raise ValueError('replay only completed UTC days')
         return {'failed': []}
 
+    return db, connect, replay, replays
+
+
+def test_requests_resume_from_progress_and_record_failures():
+    db, connect, replay, replays = requests_harness()
     reports = catchup.run_requests(connect, replay=replay)
     assert replays == [d(2), d(1)]  # resumed at next_cutoff, newest first
     progress = [params for sql, params in db['log'] if sql.startswith('UPDATE revenue_replay_requests SET n')]
     assert [p[0] for p in progress] == [d(1), date(2026, 10, 31)]
     assert reports[0]['status'] == 'failed' and [f['cutoff'] for f in reports[0]['failed']] == [
         '2026-11-03', '2026-11-01']
-    assert db['log'][-1][1] == ('failed', 7)
+    final = db['log'][-1]
+    assert final[1] == ('failed', 7)
+
+
+def test_cancelled_requests_stop_and_stay_cancelled():
+    # Cancelled before it was claimed: never runs.
+    db, connect, replay, replays = requests_harness(claimable=False)
+    assert catchup.run_requests(connect, replay=replay) == [] and replays == []
+    # Cancelled while running: stops before the next cutoff, status untouched.
+    db, connect, replay, replays = requests_harness(statuses=['running', 'cancelled'])
+    reports = catchup.run_requests(connect, replay=replay)
+    assert replays == [d(2)] and reports[0]['status'] == 'cancelled'
+    assert not any(sql.startswith('UPDATE revenue_replay_requests SET status=%s') for sql, _ in db['log'])
 
 
 def test_request_validation():

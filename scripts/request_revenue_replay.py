@@ -9,7 +9,7 @@ Use it after a venue or configuration change makes published days stale.
     python scripts/request_revenue_replay.py --prime spark --from 2026-11-01 --to 2026-11-10 \\
         --reason "S73 added to Spark config"
     python scripts/request_revenue_replay.py --list
-    python scripts/request_revenue_replay.py --cancel 7
+    python scripts/request_revenue_replay.py --cancel 7     # pending or running; a running one stops before its next cutoff
 """
 
 import argparse
@@ -57,11 +57,11 @@ def main():
             return
         if args.cancel is not None:
             row = conn.execute("UPDATE revenue_replay_requests SET status='cancelled', finished_at=NOW() "
-                               "WHERE request_id=%s AND status='pending' RETURNING request_id",
+                               "WHERE request_id=%s AND status IN ('pending', 'running') RETURNING request_id",
                                (args.cancel,)).fetchone()
             print(json.dumps({"cancelled": bool(row)}))
             if not row:
-                raise SystemExit("only a pending request can be cancelled")
+                raise SystemExit("only a pending or running request can be cancelled")
             return
         if not (args.start and args.end and args.reason):
             p.error("--prime needs --from, --to and --reason")

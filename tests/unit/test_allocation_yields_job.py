@@ -161,3 +161,36 @@ def test_check_published_compares_rows_and_never_writes(tmp_path):
     changed['allocations'][0]['net_apy'] = '0'
     report, _ = run(tmp_path / 'diff', published=changed, check=True)
     assert report['status'] == 'differs' and report['venues_differing'] == [changed['allocations'][0]['venue_id']]
+
+
+def test_work_directory_lifecycle(tmp_path):
+    # Left behind by a run that died after publishing: removed once published.
+    leftover = tmp_path / 'obex/2026-10/inputs'
+    leftover.mkdir(parents=True)
+    run(tmp_path, published={'revision_id': 'r1'}, pipeline=lambda *a: pytest.fail('must not run'))
+    assert not (tmp_path / 'obex/2026-10').exists()
+
+    # A capture made for a different (revised) close is discarded, not resumed.
+    stale = tmp_path / 'obex/2026-10'
+    (stale / 'inputs').mkdir(parents=True)
+    (stale / 'control.sha256').write_text('0' * 64)
+    (stale / 'inputs/pins.json').write_text('{"old": true}')
+    seen = []
+
+    def failing(root, prime, month, control, work):
+        seen.append((work / 'inputs/pins.json').exists())
+        raise RuntimeError('step capture failed')
+
+    with pytest.raises(RuntimeError):
+        run(tmp_path, pipeline=failing)
+    assert seen == [False]
+    # ...while a failed run for the same close keeps its checkpoints for the next run.
+    (stale / 'inputs').mkdir()
+    (stale / 'inputs/pins.json').write_text('{}')
+    with pytest.raises(RuntimeError):
+        run(tmp_path, pipeline=failing)
+    assert seen == [False, True]
+
+    # --check-published leaves nothing behind.
+    report, _ = run(tmp_path / 'check', published=None, check=True)
+    assert report['status'] == 'not_published' and not (tmp_path / 'check/obex/2026-10').exists()

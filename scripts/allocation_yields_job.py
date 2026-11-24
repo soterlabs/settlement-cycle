@@ -182,18 +182,27 @@ def process(root, prime, month, work_root, *, connect, code_version, check_publi
     read = read or read_published
     with connect() as conn:
         published = read(conn, prime, month)
+    work = work_root / prime / month
     if published is not None and not check_published:
+        shutil.rmtree(work, ignore_errors=True)  # left behind if a run died right after publishing
         return {"prime": prime, "month": month, "status": "already_published",
                 "revision_id": published["revision_id"]}
     control, reason = close_control(root, prime, month)
     if control is None:
         return {"prime": prime, "month": month, "status": reason}
-    work = work_root / prime / month
+    # A revised close (new control) must not resume a capture made for the old one.
+    marker = work / "control.sha256"
+    if work.exists() and (not marker.exists() or marker.read_text() != sha256(control)):
+        _log.info("resetting work directory for %s %s: control changed", prime, month)
+        shutil.rmtree(work)
     work.mkdir(parents=True, exist_ok=True)
+    marker.write_text(sha256(control))
+    # On failure the work directory is kept: capture checkpoints resume next run.
     pipeline(root, prime, month, control, work)
     document, report = checked_document(root, prime, month, control, work)
     summary = {k: report[k] for k in ("rows", "rows_with_cost", "rows_with_net_apy", "unallocated_difference")}
     if check_published:
+        shutil.rmtree(work)
         if published is None:
             return {"prime": prime, "month": month, "status": "not_published", **summary}
         diff = compare(published, document)

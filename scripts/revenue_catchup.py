@@ -30,6 +30,7 @@ interrupted by the job deadline resumes the next night.
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import json
 import logging
@@ -68,7 +69,31 @@ def load_state(conn, prime, first, last):
     return published, latest
 
 
-def catch_up(connect, primes, today, days, *, replay, dry_run=False):
+def guarded_run(conn, prime, *, start, end, run=None, **kwargs):
+    """Run one cutoff only if it is still a catch-up target, checked UNDER the prime lock.
+
+    Advisory locks are re-entrant per session: take the prime's lock first,
+    re-read the cutoff's state, and only then let the worker take it again.
+    A day the 20:17 worker published while we waited is therefore skipped.
+    """
+    from settle.revenue.worker import lock_key
+    from settle.revenue.worker import run_prime as worker_run
+
+    run = run or worker_run
+    if start != end:
+        raise ValueError("catch-up replays one cutoff at a time")
+    if not conn.execute("SELECT pg_try_advisory_lock(%s)", (lock_key(prime),)).fetchone()[0]:
+        return {"prime": prime, "status": "already_running", "results": []}
+    try:
+        published, latest = load_state(conn, prime, start, start)
+        if not targets(published, latest, start + timedelta(days=1), 1):
+            return {"prime": prime, "status": "ok", "results": [{"cutoff": str(start), "status": "skipped"}]}
+        return run(conn, prime, start=start, end=end, **kwargs)
+    finally:
+        conn.execute("SELECT pg_advisory_unlock(%s)", (lock_key(prime),))
+
+
+def catch_up(connect, primes, today, days, *, replay, dry_run=False, worker=None):
     reports = []
     for prime in primes:
         with connect() as conn:
@@ -80,12 +105,10 @@ def catch_up(connect, primes, today, days, *, replay, dry_run=False):
             continue
         failed, skipped = [], []
         for cutoff in todo:
-            with connect() as conn:
-                published, latest = load_state(conn, prime, cutoff, cutoff)
-            if not targets(published, latest, cutoff + timedelta(days=1), 1):
+            summary = replay(connect, prime, cutoff, cutoff, run=functools.partial(guarded_run, run=worker))
+            failed += summary["failed"]
+            if summary["counts"].get("skipped"):
                 skipped.append(str(cutoff))  # published or taken over since planning
-                continue
-            failed += replay(connect, prime, cutoff, cutoff)["failed"]
         reports.append({"prime": prime, "status": "failed" if failed else "ok",
                         "planned": [str(d) for d in todo], "skipped": skipped, "failed": failed})
     return reports
@@ -105,8 +128,19 @@ def run_requests(connect, *, replay):
         _log.info("replay request id=%s prime=%s from=%s to=%s next=%s", request_id, prime, first, last, next_cutoff)
         cutoff = last if next_cutoff is None else next_cutoff
         with connect() as conn:
-            conn.execute("UPDATE revenue_replay_requests SET status='running' WHERE request_id=%s", (request_id,))
+            claimed = conn.execute(
+                "UPDATE revenue_replay_requests SET status='running' WHERE request_id=%s "
+                "AND status IN ('pending', 'running') RETURNING request_id", (request_id,)).fetchone()
+        if not claimed:
+            continue  # cancelled since the queue was read
+        cancelled = False
         while cutoff >= first:
+            with connect() as conn:
+                state = conn.execute("SELECT status FROM revenue_replay_requests WHERE request_id=%s",
+                                     (request_id,)).fetchone()
+            if state is None or state[0] != "running":
+                cancelled = True
+                break
             try:
                 failed = [*failed, *replay(connect, prime, cutoff, cutoff)["failed"]]
             except ValueError as exc:  # e.g. a cutoff that is not a completed UTC day
@@ -115,10 +149,13 @@ def run_requests(connect, *, replay):
             with connect() as conn:
                 conn.execute("UPDATE revenue_replay_requests SET next_cutoff=%s, failed=%s WHERE request_id=%s",
                              (cutoff, Jsonb(failed), request_id))
+        if cancelled:
+            reports.append({"request_id": request_id, "prime": prime, "status": "cancelled", "failed": failed})
+            continue
         status = "failed" if failed else "done"
         with connect() as conn:
-            conn.execute("UPDATE revenue_replay_requests SET status=%s, finished_at=NOW() WHERE request_id=%s",
-                         (status, request_id))
+            conn.execute("UPDATE revenue_replay_requests SET status=%s, finished_at=NOW() WHERE request_id=%s "
+                         "AND status='running'", (status, request_id))
         reports.append({"request_id": request_id, "prime": prime, "status": "failed" if failed else "ok",
                         "failed": failed})
     return reports
