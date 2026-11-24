@@ -155,59 +155,55 @@ export default defineRailway(() => {
     },
   });
 
-  // Retain the existing uploaded, unscheduled historical jobs. Omitting them
-  // from the project would make an otherwise additive rollout delete them.
-  const historicalJobs = [
-    ["settle-revenue-backfill-oct2026", "--from 2026-10-01 --to 2026-10-26 --missing-views-only --newest-first --wait-for-lock"],
-    ["settle-revenue-bootstrap-oct2026", "--from 2026-10-26 --to 2026-10-26 --missing-views-only --wait-for-lock"],
-  ].map(([name, window]) => service(name, {
-    replicas: { "us-west2": 1 },
-    build: { builder: "DOCKERFILE" as const, dockerfilePath: "Dockerfile" },
-    deploy: {
-      startCommand: `python -m settle.revenue.worker ${window} --prime keel --prime obex --prime skybase --prime osero --prime spark --prime grove`,
-      restartPolicyMaxRetries: 5,
-    },
-    env: Object.fromEntries([
-      "DATABASE_URL", "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC",
-      "OPTIMISM_RPC", "UNICHAIN_RPC", "AVALANCHE_C_RPC", "PLUME_RPC", "MONAD_RPC",
-      "ROBINHOOD_RPC", "SETTLE_INPUT_REVISION", "SETTLE_REQUIRE_POSTGRES",
-      "REVENUE_CODE_VERSION", "REVENUE_TIMEOUT_SECONDS",
-    ].map((name) => [name, preserve()])),
-  }));
+  const providerEnv = {
+    DATABASE_URL: "${{Postgres.DATABASE_URL}}",
+    ...Object.fromEntries([
+      "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC", "OPTIMISM_RPC",
+      "UNICHAIN_RPC", "AVALANCHE_C_RPC", "PLUME_RPC", "MONAD_RPC", "ROBINHOOD_RPC",
+      "SETTLE_INPUT_REVISION", "REVENUE_START_DATE",
+    ].map((name) => [name, `\${{settle-revenue-daily.${name}}}`])),
+    SETTLE_REQUIRE_POSTGRES: "1",
+  };
 
-  // One-off replays of daily observations computed before October's venue
-  // additions (Grove E43/E44, Osero O3, Spark S70/S71/S72 and the corrected S32
-  // sUSDS capital method). See docs/pipeline/daily-publication-recovery.md.
-  // Unscheduled and without a GitHub source, like the jobs above: a push to
-  // main must not restart a long replay under a different code version, so each
-  // is uploaded from a clean main checkout with REVENUE_CODE_VERSION set to it.
-  // settle.revenue.replay takes the prime lock per cutoff and does not start a
-  // cutoff between 16:00 and 21:00 UTC, so the 20:17 daily jobs keep priority.
-  const replayJobs = [
-    ["spark", "2026-10-01", "2026-11-08"],
-    ["grove", "2026-10-01", "2026-11-05"],
-    ["osero", "2026-10-01", "2026-11-10"],
-  ].map(([prime, from, to]) => service(`settle-revenue-replay-${prime}-oct2026`, {
+  // Nightly, after the 20:17 per-prime workers: retries daily cutoffs of the
+  // last 14 days that are missing or whose latest attempt failed/was abandoned,
+  // then runs manual replay requests (scripts/request_revenue_replay.py).
+  // Published days are never recomputed automatically. One cutoff per prime
+  // lock, never started 16:00-21:00 UTC (settle.revenue.replay).
+  const revenueCatchup = service("settle-revenue-catchup", {
+    source: settlementCycle,
     replicas: { "us-west2": 1 },
-    build: { builder: "DOCKERFILE" as const, dockerfilePath: "Dockerfile" },
+    build,
     deploy: {
-      startCommand: `python -m settle.revenue.replay --prime ${prime} --from ${from} --to ${to}`,
+      startCommand: "python scripts/revenue_catchup.py",
+      cronSchedule: "0 23 * * *",
       restartPolicyType: "NEVER",
     },
-    env: {
-      DATABASE_URL: "${{Postgres.DATABASE_URL}}",
-      ...Object.fromEntries([
-        "ENVIO_API_TOKEN", "ETH_RPC", "BASE_RPC", "ARBITRUM_RPC", "OPTIMISM_RPC",
-        "UNICHAIN_RPC", "AVALANCHE_C_RPC", "PLUME_RPC", "MONAD_RPC", "ROBINHOOD_RPC",
-        "SETTLE_INPUT_REVISION", "REVENUE_START_DATE",
-      ].map((name) => [name, `\${{settle-revenue-daily.${name}}}`])),
-      SETTLE_REQUIRE_POSTGRES: "1",
-      REVENUE_CODE_VERSION: preserve(),
-      REPLAY_TIMEOUT_SECONDS: "345600",
+    env: { ...providerEnv, CATCHUP_DAYS: "14", CATCHUP_TIMEOUT_SECONDS: "54000" },
+  });
+
+  // Monthly allocation yields, computed and published without a human step
+  // once a month's close (reconciliation/<month>/finalization.json and the
+  // monthly-allocation-controls copies) is on main. Already-published months
+  // are skipped; publication requires scripts/verify_allocation_preview.py to
+  // pass. Capture checkpoints live on the volume so a restart resumes.
+  const yieldsWork = volume("allocation-yields-work", { region: "us-west2", sizeMB: 20000, allowOnlineResize: true });
+  const allocationYields = service("settle-allocation-yields", {
+    source: settlementCycle,
+    replicas: { "us-west2": 1 },
+    build,
+    deploy: {
+      startCommand: "python scripts/allocation_yields_job.py",
+      cronSchedule: "30 6 * * *",
+      restartPolicyType: "NEVER",
     },
-  }));
+    volumeMounts: { "/work": yieldsWork },
+    // Spark October 2026 is captured outside this job; automation starts with November.
+    env: { ...providerEnv, YIELDS_WORK_DIR: "/work", YIELDS_FIRST_MONTH: "2026-11",
+           YIELDS_TIMEOUT_SECONDS: "82800" },
+  });
 
   return project("settlement-cycle-data", {
-    resources: [settleApi, Postgres, settleCron, revenueDaily, ...revenuePrimes, financialReporting, sparkReporting, cashFlowReporting, ...historicalJobs, ...replayJobs, postgresVolume],
+    resources: [settleApi, Postgres, settleCron, revenueDaily, ...revenuePrimes, financialReporting, sparkReporting, cashFlowReporting, revenueCatchup, allocationYields, postgresVolume, yieldsWork],
   });
 });
