@@ -185,3 +185,23 @@ def test_supplement_inherits_parent_and_venue_date_bounds(tmp_path):
     payer = next(r for r in rows if r["role"] == "redemption_payer")
     assert payer["start_date"] == "2026-01-01"
     assert payer["end_date"] == "2026-09-30"
+
+
+@pytest.mark.parametrize("duplicate", ["Prime", "venue"])
+def test_duplicate_ids_cannot_mislabel_supplementary_addresses(tmp_path, duplicate):
+    venue = {
+        "id": "V1",
+        "label": "Original",
+        "chain": "ethereum",
+        "token": {"address": "0x" + "11" * 20},
+    }
+    write_config(tmp_path, venue)
+    path = tmp_path / "test.yaml"
+    doc = yaml.safe_load(path.read_text())
+    if duplicate == "Prime":
+        (tmp_path / "other.yaml").write_text(yaml.safe_dump(doc))
+    else:
+        doc["venues"].append({**venue, "chain": "base", "label": "Conflicting"})
+        path.write_text(yaml.safe_dump(doc))
+    with pytest.raises(ValueError, match=f"Duplicate {duplicate} ID"):
+        export.build_rows(tmp_path)

@@ -1,8 +1,8 @@
 # Address inventory for Prime wallet monitoring
 
 Sky's **Monthly Settlement Cycle (MSC)** calculates amounts owed between Sky and
-its **Prime Agents** (investment operators such as Spark and Grove). Each operator
-uses **ALM proxies**: custody wallets/contracts that hold assets and move funds to
+its **Prime Agents** (investment operators such as Spark and Grove). Operators can
+use **ALM proxies**: custody wallets/contracts that hold assets and move funds to
 investment destinations, called **venues** in configuration.
 
 [`msc_addresses.csv`](msc_addresses.csv) gives a monitoring bot a labeled address
@@ -29,7 +29,7 @@ python -m venv .venv
 No blockchain connection, database or credentials are needed. The unit suite
 checks the committed CSV against config: regenerate it in the same PR when
 relevant config changes. An empty or missing config directory fails without
-replacing the existing export.
+replacing the existing export. Duplicate Prime/venue IDs are also rejected.
 
 ## Using the file
 

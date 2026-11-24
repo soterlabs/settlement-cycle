@@ -124,8 +124,18 @@ def build_rows(config_dir: Path) -> list[dict[str, str]]:
     }
     if not primes:
         raise ValueError(f"No Prime configurations found in {config_dir}")
-    prime_by_id = {d["id"]: d for d in primes.values()}
-    venues = {(d["id"], v["id"]): v for d in primes.values() for v in d.get("venues", [])}
+    prime_by_id = {}
+    venues = {}
+    for name, doc in primes.items():
+        prime_id = doc["id"]
+        if prime_id in prime_by_id:
+            raise ValueError(f"Duplicate Prime ID: {prime_id} ({name})")
+        prime_by_id[prime_id] = doc
+        for venue in doc.get("venues", []):
+            key = (prime_id, venue["id"])
+            if key in venues:
+                raise ValueError(f"Duplicate venue ID: {key} ({name})")
+            venues[key] = venue
     rows = []
 
     def walk(node, path, context, file):
