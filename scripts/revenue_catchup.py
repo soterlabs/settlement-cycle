@@ -86,6 +86,8 @@ def guarded_run(conn, prime, *, start, end, run=None, **kwargs):
         return {"prime": prime, "status": "already_running", "results": []}
     try:
         published, latest = load_state(conn, prime, start, start)
+        # We hold the prime lock, so a 'running' attempt belongs to a killed process.
+        latest = {d: "abandoned" if s == "running" else s for d, s in latest.items()}
         if not targets(published, latest, start + timedelta(days=1), 1):
             return {"prime": prime, "status": "ok", "results": [{"cutoff": str(start), "status": "skipped"}]}
         return run(conn, prime, start=start, end=end, **kwargs)
@@ -93,9 +95,17 @@ def guarded_run(conn, prime, *, start, end, run=None, **kwargs):
         conn.execute("SELECT pg_advisory_unlock(%s)", (lock_key(prime),))
 
 
-def catch_up(connect, primes, today, days, *, replay, dry_run=False, worker=None):
+# Small primes first: a slow Spark backlog must not starve the others.
+ORDER = ("keel", "skybase", "obex", "osero", "grove", "spark")
+
+
+def catch_up(connect, primes, today, days, *, replay, dry_run=False, worker=None,
+             budget_seconds=2 * 3600, clock=None):
+    """Retry each prime's targets, starting no new cutoff once its time budget is spent."""
+    import time
+    clock = clock or time.monotonic
     reports = []
-    for prime in primes:
+    for prime in sorted(primes, key=lambda p: ORDER.index(p) if p in ORDER else len(ORDER)):
         with connect() as conn:
             published, latest = load_state(conn, prime, today - timedelta(days=days), today - timedelta(days=1))
         todo = targets(published, latest, today, days)
@@ -103,14 +113,19 @@ def catch_up(connect, primes, today, days, *, replay, dry_run=False, worker=None
         if dry_run or not todo:
             reports.append({"prime": prime, "status": "ok", "planned": [str(d) for d in todo]})
             continue
-        failed, skipped = [], []
+        failed, skipped, deferred = [], [], []
+        started = clock()
         for cutoff in todo:
+            if clock() - started >= budget_seconds:
+                deferred.append(str(cutoff))  # retried next night
+                continue
             summary = replay(connect, prime, cutoff, cutoff, run=functools.partial(guarded_run, run=worker))
             failed += summary["failed"]
             if summary["counts"].get("skipped"):
                 skipped.append(str(cutoff))  # published or taken over since planning
-        reports.append({"prime": prime, "status": "failed" if failed else "ok",
-                        "planned": [str(d) for d in todo], "skipped": skipped, "failed": failed})
+        reports.append({"prime": prime, "status": "failed" if failed or deferred else "ok",
+                        "planned": [str(d) for d in todo], "skipped": skipped, "failed": failed,
+                        **({"over_budget": deferred} if deferred else {})})
     return reports
 
 
@@ -198,7 +213,8 @@ def main():
             print(json.dumps({"status": "already_running"}), flush=True)
             return
         reports = catch_up(connect_, args.prime or PRIMES, datetime.now(UTC).date(), args.days,
-                           replay=replay, dry_run=args.dry_run)
+                           replay=replay, dry_run=args.dry_run,
+                           budget_seconds=int(os.environ.get("CATCHUP_PRIME_BUDGET_SECONDS", "7200")))
         if not args.dry_run and not args.prime:
             reports += run_requests(connect_, replay=replay)
     for report in reports:

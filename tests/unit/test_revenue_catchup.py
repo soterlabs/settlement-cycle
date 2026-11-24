@@ -110,8 +110,9 @@ def test_dry_run_and_nothing_to_do_never_replay(monkeypatch):
     reports = catchup.catch_up(connect, ['grove', 'osero'], TODAY, 14, replay=replay, dry_run=True,
                                worker=worker)
     assert worked == []
-    assert reports == [{'prime': 'grove', 'status': 'ok', 'planned': []},
-                       {'prime': 'osero', 'status': 'ok', 'planned': [str(d(day)) for day in range(23, 9, -1)]}]
+    # Small primes first, whatever order they were given in.
+    assert reports == [{'prime': 'osero', 'status': 'ok', 'planned': []},
+                       {'prime': 'grove', 'status': 'ok', 'planned': [str(d(day)) for day in range(23, 9, -1)]}]
 
 
 class RequestConn:
@@ -190,3 +191,29 @@ def test_request_validation():
                           (('nope', d(1), d(2)), 'unknown prime')):
         with pytest.raises(ValueError, match=message):
             module.validate(*args, TODAY, ('spark',))
+
+
+def test_each_prime_has_a_time_budget(monkeypatch):
+    # Spark: three missing days, each taking an hour; budget two hours.
+    spark = ({d(day) for day in range(10, 24)} - {d(23), d(22), d(21)}, {})
+    obex = ({d(day) for day in range(10, 23)}, {})  # 23 missing
+    states = [obex, (set(), {}), spark, (set(), {}), (set(), {})]
+    connect, replay, worker, _, worked, _ = harness(monkeypatch, states)
+    now = [0.0]
+
+    def slow_worker(conn, prime, **kwargs):
+        now[0] += 3600
+        return worker(conn, prime, **kwargs)
+
+    reports = catchup.catch_up(connect, ['spark', 'obex'], TODAY, 14, replay=replay, worker=slow_worker,
+                               budget_seconds=7200, clock=lambda: now[0])
+    assert [p for p, _ in worked] == ['obex', 'spark', 'spark']
+    assert reports[1]['over_budget'] == ['2026-11-21'] and reports[1]['status'] == 'failed'
+
+
+def test_a_running_attempt_seen_under_the_lock_is_stale_and_retried(monkeypatch):
+    monkeypatch.setattr(catchup, 'load_state', lambda *a: ({d(20)}, {d(20): 'running'}))
+    ran = []
+    report = catchup.guarded_run(LockConn([]), 'spark', start=d(20), end=d(20),
+                                 run=lambda conn, prime, **k: ran.append(prime) or {'status': 'ok', 'results': []})
+    assert ran == ['spark'] and report['status'] == 'ok'

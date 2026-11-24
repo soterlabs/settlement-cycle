@@ -16,9 +16,12 @@ New months need no change: the daily worker starts a new month-to-date on the
 
 For each prime, a completed day of the last `CATCHUP_DAYS` (14) is retried when
 it has no published revision, or when its latest attempt is `failed` or
-`abandoned`. A day whose latest attempt is still `running` is left to its owner,
+`abandoned`. Primes run smallest first, each with a 2-hour budget for starting
+new cutoffs (`CATCHUP_PRIME_BUDGET_SECONDS`); the rest wait for the next night.
+A day whose latest attempt is still `running` is left to its owner,
 and each day is re-checked while holding the prime's lock, so a day the 20:17
-worker published in the meantime is skipped. Retries go through
+worker published in the meantime is skipped (a `running` attempt seen while
+holding the lock is stale and is retried). Retries go through
 `settle.revenue.replay`: one cutoff per prime lock, newest first, never started
 16:00–21:00 UTC, with the worker's reference-rate deferral, bounded attempts and
 immutable revisions. A day that was published normally is **never** recomputed

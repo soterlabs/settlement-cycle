@@ -145,7 +145,8 @@ def checked_document(root, prime, month, control, work):
 
 
 ARTIFACTS = ("inputs/history.jsonl.gz", "inputs/idle_deductions.json", "inputs/pins.json",
-             "readiness.json.gz", "readiness.md", "yields.json", "yields.md", "preview.json", "verification.json")
+             "readiness.json.gz", "readiness.md", "yields.json", "yields.md", "preview.json", "verification.json",
+             "code_versions.json")
 
 
 def store(conn, document, work, code_version):
@@ -197,6 +198,10 @@ def process(root, prime, month, work_root, *, connect, code_version, check_publi
         shutil.rmtree(work)
     work.mkdir(parents=True, exist_ok=True)
     marker.write_text(sha256(control))
+    # A capture can resume across deployments: keep every code version that touched it.
+    versions = work / "code_versions.json"
+    seen = json.loads(versions.read_text()) if versions.exists() else []
+    versions.write_text(json.dumps([*seen, code_version] if code_version not in seen else seen) + "\n")
     # On failure the work directory is kept: capture checkpoints resume next run.
     pipeline(root, prime, month, control, work)
     document, report = checked_document(root, prime, month, control, work)
